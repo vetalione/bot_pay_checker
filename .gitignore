@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.env
+*.log
+.DS_Store
+.vscode/
+*.swp
+*.swo
+*~
+.idea/
+
+# Video files (uploaded separately to Railway)
+*.MOV
+*.mov
+*.mp4
+*.MP4
+*.avi
+*.AVI
+videos/
