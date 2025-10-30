@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# Скрипт для получения file_id видео из Telegram
+
+echo "=== Инструкция по получению file_id для видео ==="
+echo ""
+echo "1. Откройте Telegram и найдите бота @userinfobot"
+echo "2. Отправьте ему каждое из ваших видео:"
+echo "   - IMG_0539.MOV"
+echo "   - IMG_0562.MOV"
+echo "   - IMG_0565.MOV"
+echo ""
+echo "3. Бот вернет информацию о файле, найдите строку с 'file_id'"
+echo "4. Скопируйте file_id для каждого видео"
+echo ""
+echo "5. Обновите .env файл:"
+echo "   VIDEO_URL_1=file_id_первого_видео"
+echo "   VIDEO_URL_2=file_id_второго_видео"
+echo "   VIDEO_URL_3=file_id_третьего_видео"
+echo ""
+echo "=== Альтернативный вариант ==="
+echo ""
+echo "Если видео слишком большие (>50MB), вам нужно:"
+echo "1. Сжать видео до меньшего размера"
+echo "2. ИЛИ загрузить на YouTube/Google Drive и использовать публичные ссылки"
+echo ""
+echo "Текущие размеры ваших видео:"
+ls -lh IMG_0539.MOV IMG_0562.MOV IMG_0565.MOV 2>/dev/null | awk '{print $5, $9}'
+echo ""
+echo "Лимит Telegram: 50 MB"
+echo ""

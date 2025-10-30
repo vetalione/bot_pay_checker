@@ -1,11 +1,10 @@
-import { Telegraf, Context } from 'telegraf';
+import { Telegraf, Context, Markup } from 'telegraf';
 import { message } from 'telegraf/filters';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
-import { Input } from 'telegraf/typings/core/types/typegram';
 import { formatCardNumber, logWithTimestamp, delay } from './utils';
 import { MESSAGES, BUTTON_LABELS, VIDEO_CAPTIONS, TIMING } from './constants';
-import { validateReceiptWithGemini, validateReceiptSimple } from './receiptValidator';
+import { validateReceiptWithGemini } from './receiptValidator';
 
 dotenv.config();
 
@@ -14,6 +13,7 @@ interface UserState {
   step: 'start' | 'video1' | 'video2' | 'video3' | 'payment_info' | 'waiting_receipt';
   userId: number;
   username?: string;
+  currency?: 'RUB' | 'UAH';
 }
 
 // Хранилище состояний пользователей (в продакшене использовать БД)
@@ -24,8 +24,11 @@ const config = {
   botToken: process.env.BOT_TOKEN!,
   channelId: process.env.CHANNEL_ID!,
   channelInviteLink: process.env.CHANNEL_INVITE_LINK!,
+  chatId: process.env.CHAT_ID!, // ID чата для общения покупателей
   paymentAmount: parseInt(process.env.PAYMENT_AMOUNT || '2000'),
   cardNumber: process.env.CARD_NUMBER!,
+  paymentAmountUAH: parseInt(process.env.PAYMENT_AMOUNT_UAH || '1050'),
+  cardNumberUAH: process.env.CARD_NUMBER_UAH || '5169155124283993',
   videos: [
     process.env.VIDEO_URL_1!,
     process.env.VIDEO_URL_2!,
@@ -45,19 +48,24 @@ bot.start(async (ctx) => {
 
   // Инициализируем состояние пользователя
   userStates.set(userId, {
-    step: 'start',
+    step: 'payment_info',
     userId,
     username
   });
 
   await ctx.reply(
     '👋 Добро пожаловать!\n\n' +
-    'Сейчас я покажу вам несколько интересных видео о нашем продукте.\n\n' +
-    '📹 Приготовьтесь к просмотру!'
+    '💎 Для получения доступа к закрытому каналу с эксклюзивным контентом, ' +
+    'нажмите кнопку ниже.',
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '💵 Оплатить рублями (2000 ₽)', callback_data: 'pay_rub' }],
+          [{ text: '💴 Оплатить гривнами (1050 ₴)', callback_data: 'pay_uah' }]
+        ]
+      }
+    }
   );
-
-  // Отправляем первое видео
-  await sendVideo(ctx, 0);
 });
 
 // Функция отправки видео
@@ -137,15 +145,16 @@ async function showPaymentButton(ctx: Context) {
     {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '💳 Оплатить доступ', callback_data: 'pay' }]
+          [{ text: '💵 Оплатить рублями (2000 ₽)', callback_data: 'pay_rub' }],
+          [{ text: '💴 Оплатить гривнами (1050 ₴)', callback_data: 'pay_uah' }]
         ]
       }
     }
   );
 }
 
-// Обработка кнопки оплаты
-bot.action('pay', async (ctx) => {
+// Обработка нажатия кнопки "Оплатить рублями"
+bot.action('pay_rub', async (ctx) => {
   const userId = ctx.from.id;
   const state = userStates.get(userId);
 
@@ -157,15 +166,70 @@ bot.action('pay', async (ctx) => {
   await ctx.answerCbQuery();
 
   state.step = 'waiting_receipt';
+  state.currency = 'RUB';
   userStates.set(userId, state);
 
   // Форматируем номер карты для отображения
   const formattedCard = config.cardNumber.replace(/(\d{4})(?=\d)/g, '$1 ');
 
+          await ctx.reply(
+    '💳 **Реквизиты для оплаты:**\n\n' +
+    `💰 Сумма: **${config.paymentAmount} ₽**\n` +
+    `🏦 Карта: \`${formattedCard}\`\n` +
+    '👤 Получатель: **Vitalii Smirnov**\n\n' +
+    '─────────────────────\n\n' +
+    '📱 **Как оплатить:**\n\n' +
+    '**Рекомендуем Т-банк или Сбербанк** — в них есть мгновенный перевод на иностранные карты.\n\n' +
+    '**Инструкция:**\n' +
+    '1️⃣ Найдите раздел переводов (в Т-банке: "Перевод по номеру карты", в Сбербанке: "Иностранные переводы")\n' +
+    '2️⃣ Введите номер карты и сумму\n' +
+    '3️⃣ Укажите имя получателя\n' +
+    '4️⃣ Подтвердите перевод\n\n' +
+    '💡 Другие банки: проверьте наличие функции "перевод на иностранную карту"\n\n' +
+    '─────────────────────\n\n' +
+    '📸 **После оплаты:**\n\n' +
+    '✅ Сделайте скриншот квитанции\n' +
+    '✅ Отправьте скриншот в этот чат\n\n' +
+    '⚠️ **На скриншоте должно быть видно:**\n' +
+    `• Сумму перевода (${config.paymentAmount} ₽)\n` +
+    '• Номер карты получателя\n' +
+    '• Имя получателя',
+    { parse_mode: 'Markdown' }
+  );
+
+  // Добавляем кнопку для связи с ассистентом
+  await ctx.reply(
+    '💬 Если у вас возникли вопросы или трудности с оплатой:',
+    Markup.inlineKeyboard([
+      [Markup.button.url('📨 Связаться с ассистентом', 'https://t.me/ADA_gii')]
+    ])
+  );
+});
+
+// Обработка нажатия кнопки "Оплатить гривнами"
+bot.action('pay_uah', async (ctx) => {
+  const userId = ctx.from.id;
+  const username = ctx.from.username;
+  const state: UserState = userStates.get(userId) || { 
+    step: 'start',
+    userId,
+    username
+  };
+
+  await ctx.answerCbQuery();
+
+  state.step = 'waiting_receipt';
+  state.currency = 'UAH';
+  userStates.set(userId, state);
+
+  // Форматируем номер карты для отображения
+  const formattedCard = config.cardNumberUAH.replace(/(\d{4})(?=\d)/g, '$1 ');
+
   await ctx.reply(
     '💳 **Реквизиты для оплаты:**\n\n' +
-    `💰 Сумма: **${config.paymentAmount} рублей**\n` +
-    `🏦 Номер карты: \`${formattedCard}\`\n\n` +
+    `💰 Сумма: **${config.paymentAmountUAH} ₴**\n` +
+    `🏦 Карта: \`${formattedCard}\`\n` +
+    '👤 Получатель: **Микитась Юлія Олександрівна**\n\n' +
     '📋 **Инструкция:**\n' +
     '1. Переведите указанную сумму на карту\n' +
     '2. Сделайте скриншот или сохраните платежную квитанцию\n' +
@@ -174,6 +238,14 @@ bot.action('pay', async (ctx) => {
     '👇 После оплаты отправьте квитанцию сюда',
     { parse_mode: 'Markdown' }
   );
+
+  // Добавляем кнопку для связи с ассистентом
+  await ctx.reply(
+    '💬 Если у вас возникли вопросы или трудности с оплатой:',
+    Markup.inlineKeyboard([
+      [Markup.button.url('📨 Связаться с ассистентом', 'https://t.me/ADA_gii')]
+    ])
+  );
 });
 
 // Обработка получения квитанции (фото)
@@ -181,8 +253,10 @@ bot.on(message('photo'), async (ctx) => {
   const userId = ctx.from.id;
   const state = userStates.get(userId);
 
+  console.log(`Photo received from user ${userId}, current state:`, state);
+
   if (!state || state.step !== 'waiting_receipt') {
-    await ctx.reply('Пожалуйста, сначала начните процесс с команды /start');
+    await ctx.reply('Пожалуйста, сначала нажмите кнопку "Оплатить доступ" и получите реквизиты.');
     return;
   }
 
@@ -193,16 +267,18 @@ bot.on(message('photo'), async (ctx) => {
   const isValid = await validateReceipt(ctx);
 
   if (isValid) {
-    await ctx.reply('✅ Квитанция принята! Генерирую вашу персональную ссылку...');
+    await ctx.reply('✅ Квитанция принята! Генерирую ваши персональные ссылки...');
     
     try {
-      const inviteLink = await generateInviteLink(userId);
+      const channelInviteLink = await generateInviteLink(userId);
+      const chatInviteLink = await generateChatInviteLink(userId);
       
       await ctx.reply(
         '🎉 **Поздравляем!**\n\n' +
-        `Ваша персональная ссылка для доступа в канал:\n${inviteLink}\n\n` +
-        '⏰ Ссылка действительна 24 часа\n' +
-        '👤 Может быть использована только один раз\n\n' +
+        `📺 **Доступ к каналу с материалами:**\n${channelInviteLink}\n\n` +
+        `💬 **Доступ к чату с сообществом:**\n${chatInviteLink}\n\n` +
+        '⏰ Ссылки действительны 24 часа\n' +
+        '👤 Каждая ссылка может быть использована только один раз\n\n' +
         'Добро пожаловать в наше сообщество! 🚀',
         { parse_mode: 'Markdown' }
       );
@@ -211,17 +287,22 @@ bot.on(message('photo'), async (ctx) => {
       userStates.delete(userId);
 
     } catch (error) {
-      console.error('Error generating invite link:', error);
-      await ctx.reply('❌ Произошла ошибка при генерации ссылки. Пожалуйста, обратитесь в поддержку.');
+      console.error('Error generating invite links:', error);
+      await ctx.reply('❌ Произошла ошибка при генерации ссылок. Пожалуйста, обратитесь в поддержку.');
     }
   } else {
     await ctx.reply(
-      '❌ К сожалению, квитанция не прошла проверку.\n\n' +
+      '❌ К сожалению, квитанция не прошла автоматическую проверку.\n\n' +
       'Пожалуйста, убедитесь что:\n' +
       `✓ Сумма перевода: ${config.paymentAmount} рублей\n` +
       `✓ Номер карты получателя: ${config.cardNumber}\n` +
       '✓ На квитанции четко видны все данные\n\n' +
-      'Попробуйте отправить квитанцию снова.'
+      'Вы можете:\n' +
+      '• Попробовать отправить квитанцию снова\n' +
+      '• Или отправить квитанцию ассистенту для ручной проверки',
+      Markup.inlineKeyboard([
+        [Markup.button.url('📨 Написать ассистенту', 'https://t.me/ADA_gii')]
+      ])
     );
   }
 });
@@ -248,25 +329,45 @@ async function validateReceipt(ctx: Context): Promise<boolean> {
     const photoUrl = `https://api.telegram.org/file/bot${config.botToken}/${file.file_path}`;
     
     logWithTimestamp('Validating receipt with Gemini', { 
-      userId: ctx.from.id, 
+      userId: ctx.from?.id, 
       fileId 
     });
 
+    // Получаем данные пользователя для проверки валюты
+    const userId = ctx.from?.id;
+    const userState = userId ? userStates.get(userId) : undefined;
+    const currency = userState?.currency || 'RUB';
+    
+    // Выбираем параметры в зависимости от валюты
+    const paymentAmount = currency === 'UAH' ? config.paymentAmountUAH : config.paymentAmount;
+    const cardNumber = currency === 'UAH' ? config.cardNumberUAH : config.cardNumber;
+    
+    logWithTimestamp('Validating receipt', { currency, paymentAmount, cardNumber });
+    
     // Проверяем квитанцию через Gemini
     const validationResult = await validateReceiptWithGemini(
       photoUrl,
-      config.paymentAmount,
-      config.cardNumber
+      paymentAmount,
+      cardNumber,
+      currency
     );
 
     logWithTimestamp('Validation result', validationResult);
 
     // Если проверка не прошла, отправляем причину пользователю
     if (!validationResult.isValid && validationResult.reason) {
+      // Экранируем специальные символы Markdown
+      const escapedReason = validationResult.reason
+        .replace(/[_*\[\]()~`>#+=|{}.!-]/g, '\\$&');
+      
       await ctx.reply(
-        `❌ ${validationResult.reason}\n\n` +
-        'Пожалуйста, отправьте корректную квитанцию.',
-        { parse_mode: 'Markdown' }
+        `${escapedReason}\n\n` +
+        'Вы можете:\n' +
+        '• Попробовать отправить другую квитанцию\n' +
+        '• Или отправить квитанцию ассистенту для ручной проверки',
+        Markup.inlineKeyboard([
+          [Markup.button.url('📨 Написать ассистенту', 'https://t.me/ADA_gii')]
+        ])
       );
     }
 
@@ -275,50 +376,78 @@ async function validateReceipt(ctx: Context): Promise<boolean> {
   } catch (error) {
     logWithTimestamp('Error in validateReceipt', error);
     
-    // В случае ошибки используем упрощенную проверку
-    try {
-      const photo = ctx.message && 'photo' in ctx.message ? ctx.message.photo : null;
-      if (!photo || photo.length === 0) return false;
-      
-      const fileId = photo[photo.length - 1].file_id;
-      const file = await bot.telegram.getFile(fileId);
-      
-      if (!file.file_path) return false;
-      
-      const photoUrl = `https://api.telegram.org/file/bot${config.botToken}/${file.file_path}`;
-      
-      const fallbackResult = await validateReceiptSimple(
-        photoUrl,
-        config.paymentAmount,
-        config.cardNumber
-      );
-      
-      if (fallbackResult.reason) {
-        await ctx.reply(`⚠️ ${fallbackResult.reason}`);
-      }
-      
-      return fallbackResult.isValid;
-    } catch (fallbackError) {
-      logWithTimestamp('Fallback validation also failed', fallbackError);
-      return false;
-    }
+    // Возвращаем false при ошибке - не используем fallback
+    await ctx.reply(
+      '❌ Произошла ошибка при проверке квитанции.\n\n' +
+      'Пожалуйста, попробуйте отправить фото еще раз или обратитесь в поддержку.'
+    );
+    
+    return false;
   }
 }
 
-// Генерация invite-ссылки
+// Генерация invite-ссылки для канала
 async function generateInviteLink(userId: number): Promise<string> {
   try {
+    logWithTimestamp('Creating invite link', { userId, channelId: config.channelId });
+    
+    // Проверяем, что бот является администратором канала
+    try {
+      const chatMember = await bot.telegram.getChatMember(config.channelId, bot.botInfo!.id);
+      logWithTimestamp('Bot status in channel', { status: chatMember.status });
+      
+      if (chatMember.status !== 'administrator' && chatMember.status !== 'creator') {
+        throw new Error('Bot is not an administrator in the channel');
+      }
+    } catch (checkError) {
+      logWithTimestamp('Error checking bot status', checkError);
+      throw new Error('Bot is not added to the channel or lacks permissions. Please add bot as admin to the channel.');
+    }
+    
     // Создаем уникальную invite-ссылку
     const inviteLink = await bot.telegram.createChatInviteLink(config.channelId, {
       member_limit: 1, // Только для одного пользователя
       expire_date: Math.floor(Date.now() / 1000) + 86400 // 24 часа
     });
 
-    console.log(`Generated invite link for user ${userId}: ${inviteLink.invite_link}`);
+    logWithTimestamp('Generated invite link', { userId, link: inviteLink.invite_link });
     
     return inviteLink.invite_link;
   } catch (error) {
-    console.error('Error creating invite link:', error);
+    logWithTimestamp('Error generating invite link', error);
+    throw error;
+  }
+}
+
+// Генерация invite-ссылки для чата
+async function generateChatInviteLink(userId: number): Promise<string> {
+  try {
+    logWithTimestamp('Creating chat invite link', { userId, chatId: config.chatId });
+    
+    // Проверяем, что бот является администратором чата
+    try {
+      const chatMember = await bot.telegram.getChatMember(config.chatId, bot.botInfo!.id);
+      logWithTimestamp('Bot status in chat', { status: chatMember.status });
+      
+      if (chatMember.status !== 'administrator' && chatMember.status !== 'creator') {
+        throw new Error('Bot is not an administrator in the chat');
+      }
+    } catch (checkError) {
+      logWithTimestamp('Error checking bot status in chat', checkError);
+      throw new Error('Bot is not added to the chat or lacks permissions. Please add bot as admin to the chat.');
+    }
+    
+    // Создаем уникальную invite-ссылку для чата
+    const inviteLink = await bot.telegram.createChatInviteLink(config.chatId, {
+      member_limit: 1, // Только для одного пользователя
+      expire_date: Math.floor(Date.now() / 1000) + 86400 // 24 часа
+    });
+
+    logWithTimestamp('Generated chat invite link', { userId, link: inviteLink.invite_link });
+    
+    return inviteLink.invite_link;
+  } catch (error) {
+    logWithTimestamp('Error generating chat invite link', error);
     throw error;
   }
 }
