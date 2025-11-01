@@ -227,6 +227,9 @@ bot.action('continue_watching', async (ctx) => {
 
   await ctx.answerCbQuery();
   
+  // Track button click
+  await trackUserAction(userService, ctx, 'click_continue_watching', 'video2');
+  
   state.step = 'video2';
   userStates.set(userId, state);
 
@@ -269,6 +272,9 @@ bot.action('ready_for_more', async (ctx) => {
 
   await ctx.answerCbQuery();
   
+  // Track button click
+  await trackUserAction(userService, ctx, 'click_ready_for_more', 'video3');
+  
   state.step = 'video3';
   userStates.set(userId, state);
 
@@ -310,6 +316,9 @@ bot.action('get_advantage', async (ctx) => {
   }
 
   await ctx.answerCbQuery();
+  
+  // Track button click
+  await trackUserAction(userService, ctx, 'click_get_advantage', 'payment_choice');
   
   state.step = 'payment_choice';
   userStates.set(userId, state);
@@ -496,6 +505,28 @@ bot.on(message('photo'), async (ctx) => {
     const expectedAmount = currency === 'UAH' ? config.paymentAmountUAH : config.paymentAmount;
     const expectedCard = currency === 'UAH' ? config.cardNumberUAH : config.cardNumber;
     const currencySymbol = currency === 'UAH' ? '₴' : '₽';
+    
+    // Tracking отказа валидации
+    // Проверяем: это вообще не квитанция или квитанция не подходит?
+    const isReceipt = validationResult.isReceipt !== undefined ? validationResult.isReceipt : false;
+    
+    if (!isReceipt) {
+      // Это НЕ квитанция
+      await trackUserAction(userService, ctx, 'photo_rejected', state.step, {
+        reason: 'not_a_receipt',
+        imageDescription: imageDesc
+      });
+    } else {
+      // Это квитанция, но не подходит (сумма/карта/fraud)
+      await trackUserAction(userService, ctx, 'receipt_validation_failed', state.step, {
+        reason: reason,
+        isReceipt: true,
+        isFraud: validationResult.isFraud || false,
+        extractedAmount: validationResult.extractedAmount,
+        extractedCardNumber: validationResult.extractedCardNumber,
+        confidence: validationResult.confidence
+      });
+    }
     
     await ctx.reply(
       `🔍 **Что я вижу на фото:**\n${imageDesc}\n\n` +

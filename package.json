@@ -9,7 +9,8 @@
     "build": "tsc",
     "watch": "tsc -w",
     "get-file-id": "ts-node get_file_id_bot.ts",
-    "retargeting": "ts-node src/retargeting.ts"
+    "retargeting": "ts-node src/retargeting.ts",
+    "analytics": "ts-node src/analytics.ts"
   },
   "keywords": [
     "telegram",

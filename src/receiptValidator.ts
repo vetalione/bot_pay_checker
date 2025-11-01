@@ -11,8 +11,9 @@ export interface ReceiptValidationResult {
   extractedCardNumber?: string;
   imageDescription?: string;
   reason?: string;
+  isReceipt?: boolean;
+  isFraud?: boolean;
 }
-
 /**
  * Проверяет платежную квитанцию с использованием Gemini Vision API
  * @param photoUrl - URL фото квитанции
@@ -238,6 +239,7 @@ function validateAnalysis(
   if (analysis.isReceipt === false) {
     const description = analysis.imageDescription || 'изображение не является квитанцией';
     return {
+      isReceipt: false,
       isValid: false,
       confidence: 0,
       reason: `❌ Это не платежная квитанция.\n\n🔍 Что я вижу на фото:\n${description}`,
@@ -248,6 +250,8 @@ function validateAnalysis(
   if (analysis.isFraud === true) {
     const fraudDetails = analysis.reason || 'Обнаружены визуальные признаки подделки';
     return {
+      isReceipt: true,
+      isFraud: true,
       isValid: false,
       confidence: analysis.confidence || 0,
       imageDescription: analysis.imageDescription,
@@ -260,6 +264,7 @@ function validateAnalysis(
   if (extractedAmount === null || extractedAmount === undefined) {
     const description = analysis.imageDescription || 'квитанция';
     return {
+      isReceipt: true,
       isValid: false,
       confidence: analysis.confidence || 0,
       reason: `❌ Не удалось распознать сумму платежа.\n\n🔍 Что я вижу:\n${description}\n\nПожалуйста, убедитесь, что сумма перевода четко видна на квитанции.`,
@@ -268,6 +273,7 @@ function validateAnalysis(
 
   if (Math.abs(extractedAmount - expectedAmount) > 10) {
     return {
+      isReceipt: true,
       isValid: false,
       confidence: analysis.confidence || 0,
       extractedAmount,
@@ -285,6 +291,7 @@ function validateAnalysis(
 
   if (extractedCardNumber === null || extractedCardNumber === undefined) {
     return {
+      isReceipt: true,
       isValid: false,
       confidence: analysis.confidence || 0,
       imageDescription: analysis.imageDescription,
@@ -296,6 +303,7 @@ function validateAnalysis(
 
   if (extractedLast4 !== expectedLast4) {
     return {
+      isReceipt: true,
       isValid: false,
       confidence: analysis.confidence || 0,
       extractedCardNumber,
@@ -308,6 +316,7 @@ function validateAnalysis(
   const confidence = analysis.confidence || 0;
   if (confidence < 60) {
     return {
+      isReceipt: true,
       isValid: false,
       confidence,
       imageDescription: analysis.imageDescription,
@@ -317,6 +326,8 @@ function validateAnalysis(
 
   // Все проверки пройдены
   return {
+    isReceipt: true,
+    isFraud: false,
     isValid: true,
     confidence,
     extractedAmount,
