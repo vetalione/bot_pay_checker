@@ -7,7 +7,8 @@
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "build": "tsc",
-    "watch": "tsc -w"
+    "watch": "tsc -w",
+    "get-file-id": "ts-node get_file_id_bot.ts"
   },
   "keywords": [
     "telegram",

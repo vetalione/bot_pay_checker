@@ -10,7 +10,7 @@ dotenv.config();
 
 // Интерфейсы
 interface UserState {
-  step: 'start' | 'want_button' | 'video1' | 'continue_button' | 'video2' | 'ready_button' | 'video3' | 'advantage_button' | 'payment_choice' | 'waiting_receipt';
+  step: 'start' | 'video1' | 'video2' | 'video3' | 'payment_info' | 'waiting_receipt';
   userId: number;
   username?: string;
   currency?: 'RUB' | 'UAH';
@@ -33,11 +33,6 @@ const config = {
     process.env.VIDEO_URL_1!,
     process.env.VIDEO_URL_2!,
     process.env.VIDEO_URL_3!
-  ],
-  videoFileIds: [
-    process.env.VIDEO_1_FILE_ID,
-    process.env.VIDEO_2_FILE_ID,
-    process.env.VIDEO_3_FILE_ID
   ]
 };
 
@@ -53,17 +48,20 @@ bot.start(async (ctx) => {
 
   // Инициализируем состояние пользователя
   userStates.set(userId, {
-    step: 'start',
+    step: 'payment_info',
     userId,
     username
   });
 
   await ctx.reply(
-    'Привет! Сейчас я расскажу тебе как я научилась снимать рилс которые приводят мне по 100 новых подписчиков и по 9 звонков с запросом на мои услуги каждый день. Ко мне обращаются топы и комментируют миллионники. Хочешь узнать подойдет ли мой метод тебе тоже?',
+    '👋 Добро пожаловать!\n\n' +
+    '💎 Для получения доступа к закрытому каналу с эксклюзивным контентом, ' +
+    'нажмите кнопку ниже.',
     {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '� Хочу!', callback_data: 'want_more' }]
+          [{ text: '💵 Оплатить рублями (2000 ₽)', callback_data: 'pay_rub' }],
+          [{ text: '💴 Оплатить гривнами (1050 ₴)', callback_data: 'pay_uah' }]
         ]
       }
     }
@@ -137,7 +135,7 @@ async function showPaymentButton(ctx: Context) {
 
   if (!state) return;
 
-  state.step = 'payment_choice';
+  state.step = 'payment_info';
   userStates.set(userId, state);
 
   await ctx.reply(
@@ -154,168 +152,6 @@ async function showPaymentButton(ctx: Context) {
     }
   );
 }
-
-// ═══════════════════════════════════════════════════════════════
-// ВОРОНКА: Обработчики кнопок
-// ═══════════════════════════════════════════════════════════════
-
-// Кнопка "Хочу!"
-bot.action('want_more', async (ctx) => {
-  const userId = ctx.from.id;
-  const state = userStates.get(userId);
-
-  if (!state) {
-    await ctx.answerCbQuery('Пожалуйста, начните с команды /start');
-    return;
-  }
-
-  await ctx.answerCbQuery();
-  
-  state.step = 'video1';
-  userStates.set(userId, state);
-
-  await ctx.reply(
-    'Отлично, тогда обязательно посмотри это короткое видео прямо сейчас - и если хотя бы один раз узнаешь себя, значит ты все делаешь правильно и вот-вот твоя жизнь поделится на "До" и "После"!'
-  );
-
-  // Отправляем первое видео через File ID
-  const videoFileId = config.videoFileIds[0];
-  
-  if (videoFileId) {
-    await ctx.replyWithDocument(videoFileId, {
-      caption: '📹 Видео 1 из 3'
-    });
-  } else {
-    await ctx.reply('⚠️ Видео временно недоступно. Пожалуйста, свяжитесь с поддержкой.');
-  }
-
-  await ctx.reply(
-    'Посмотрели видео?',
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '▶️ Смотреть дальше', callback_data: 'continue_watching' }]
-        ]
-      }
-    }
-  );
-});
-
-// Кнопка "Смотреть дальше"
-bot.action('continue_watching', async (ctx) => {
-  const userId = ctx.from.id;
-  const state = userStates.get(userId);
-
-  if (!state) {
-    await ctx.answerCbQuery('Пожалуйста, начните с команды /start');
-    return;
-  }
-
-  await ctx.answerCbQuery();
-  
-  state.step = 'video2';
-  userStates.set(userId, state);
-
-  await ctx.reply(
-    'А теперь приготовься узнать почему у меня получилось, когда у других - нет, и почему у тебя получится тоже! Посмотри это короткое видео и как будешь готов, нажми кнопку ниже.'
-  );
-
-  // Отправляем второе видео через File ID
-  const videoFileId = config.videoFileIds[1];
-  
-  if (videoFileId) {
-    await ctx.replyWithDocument(videoFileId, {
-      caption: '📹 Видео 2 из 3'
-    });
-  } else {
-    await ctx.reply('⚠️ Видео временно недоступно. Пожалуйста, свяжитесь с поддержкой.');
-  }
-
-  await ctx.reply(
-    'Готовы двигаться дальше?',
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '✅ Готов!', callback_data: 'ready_for_more' }]
-        ]
-      }
-    }
-  );
-});
-
-// Кнопка "Готов!"
-bot.action('ready_for_more', async (ctx) => {
-  const userId = ctx.from.id;
-  const state = userStates.get(userId);
-
-  if (!state) {
-    await ctx.answerCbQuery('Пожалуйста, начните с команды /start');
-    return;
-  }
-
-  await ctx.answerCbQuery();
-  
-  state.step = 'video3';
-  userStates.set(userId, state);
-
-  await ctx.reply(
-    'Отлично, последний рывок перед сотнями заявок с рилс! В этом видео ты узнаешь про конкретный алгоритм работы который принес мне успех, и какое нечестное преимущество я тебе дам. Смотри скорее!'
-  );
-
-  // Отправляем третье видео через File ID
-  const videoFileId = config.videoFileIds[2];
-  
-  if (videoFileId) {
-    await ctx.replyWithDocument(videoFileId, {
-      caption: '📹 Видео 3 из 3'
-    });
-  } else {
-    await ctx.reply('⚠️ Видео временно недоступно. Пожалуйста, свяжитесь с поддержкой.');
-  }
-
-  await ctx.reply(
-    'Готовы забрать свое преимущество?',
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '🎁 Забрать преимущество!', callback_data: 'get_advantage' }]
-        ]
-      }
-    }
-  );
-});
-
-// Кнопка "Забрать преимущество!"
-bot.action('get_advantage', async (ctx) => {
-  const userId = ctx.from.id;
-  const state = userStates.get(userId);
-
-  if (!state) {
-    await ctx.answerCbQuery('Пожалуйста, начните с команды /start');
-    return;
-  }
-
-  await ctx.answerCbQuery();
-  
-  state.step = 'payment_choice';
-  userStates.set(userId, state);
-
-  await ctx.reply(
-    '💎 Для получения доступа к закрытому каналу с эксклюзивным контентом, нажмите кнопку ниже.',
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '💵 Оплатить рублями (2000 ₽)', callback_data: 'pay_rub' }],
-          [{ text: '💴 Оплатить гривнами (1050 ₴)', callback_data: 'pay_uah' }]
-        ]
-      }
-    }
-  );
-});
-
-// ═══════════════════════════════════════════════════════════════
-// ОПЛАТА: Обработчики выбора валюты
-// ═══════════════════════════════════════════════════════════════
 
 // Обработка нажатия кнопки "Оплатить рублями"
 bot.action('pay_rub', async (ctx) => {
