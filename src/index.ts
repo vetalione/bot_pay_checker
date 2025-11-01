@@ -64,6 +64,10 @@ bot.start(async (ctx) => {
     username
   });
 
+  // Сохраняем в БД
+  await trackUserAction(userService, ctx, 'start', 'start');
+  await updateUserStep(userService, userId, 'start');
+
   await ctx.reply(
     'Привет! Сейчас я расскажу тебе как я научилась снимать рилс которые приводят мне по 100 новых подписчиков и по 9 звонков с запросом на мои услуги каждый день. Ко мне обращаются топы и комментируют миллионники. Хочешь узнать подойдет ли мой метод тебе тоже?',
     {
@@ -179,6 +183,10 @@ bot.action('want_more', async (ctx) => {
   
   state.step = 'video1';
   userStates.set(userId, state);
+
+  // Сохраняем в БД
+  await trackUserAction(userService, ctx, 'click_want_more', 'video1');
+  await updateUserStep(userService, userId, 'video1');
 
   await ctx.reply(
     'Отлично, тогда обязательно посмотри это короткое видео прямо сейчас - и если хотя бы один раз узнаешь себя, значит ты все делаешь правильно и вот-вот твоя жизнь поделится на "До" и "После"!'
@@ -339,6 +347,11 @@ bot.action('pay_rub', async (ctx) => {
   state.currency = 'RUB';
   userStates.set(userId, state);
 
+  // Сохраняем в БД
+  await trackUserAction(userService, ctx, 'choose_rub', 'waiting_receipt');
+  await updateUserStep(userService, userId, 'waiting_receipt');
+  await setUserCurrency(userService, userId, 'RUB');
+
   // Форматируем номер карты для отображения
   const formattedCard = config.cardNumber.replace(/(\d{4})(?=\d)/g, '$1 ');
 
@@ -391,6 +404,11 @@ bot.action('pay_uah', async (ctx) => {
   state.step = 'waiting_receipt';
   state.currency = 'UAH';
   userStates.set(userId, state);
+
+  // Сохраняем в БД
+  await trackUserAction(userService, ctx, 'choose_uah', 'waiting_receipt');
+  await updateUserStep(userService, userId, 'waiting_receipt');
+  await setUserCurrency(userService, userId, 'UAH');
 
   // Форматируем номер карты для отображения
   const formattedCard = config.cardNumberUAH.replace(/(\d{4})(?=\d)/g, '$1 ');
@@ -446,6 +464,10 @@ bot.on(message('photo'), async (ctx) => {
     try {
       const channelInviteLink = await generateInviteLink(userId);
       const chatInviteLink = await generateChatInviteLink(userId);
+      
+      // Отмечаем как оплатившего в БД
+      await markUserAsPaid(userService, userId);
+      await trackUserAction(userService, ctx, 'payment_success', 'completed');
       
       await ctx.reply(
         '🎉 Поздравляем!\n\n' +
