@@ -5,6 +5,9 @@ import * as fs from 'fs';
 import { formatCardNumber, logWithTimestamp, delay } from './utils';
 import { MESSAGES, BUTTON_LABELS, VIDEO_CAPTIONS, TIMING } from './constants';
 import { validateReceiptWithGemini, ReceiptValidationResult } from './receiptValidator';
+import { initializeDatabase } from './database';
+import { UserService } from './userService';
+import { trackUserAction, updateUserStep, setUserCurrency, markUserAsPaid } from './dbHelpers';
 
 dotenv.config();
 
@@ -16,8 +19,11 @@ interface UserState {
   currency?: 'RUB' | 'UAH';
 }
 
-// Хранилище состояний пользователей (в продакшене использовать БД)
+// Хранилище состояний пользователей (Map для быстрого доступа + БД для persistence)
 const userStates = new Map<number, UserState>();
+
+// Инициализация UserService (будет создан после подключения БД)
+let userService: UserService;
 
 // Конфигурация
 const config = {
@@ -636,19 +642,38 @@ bot.catch((err, ctx) => {
   ctx.reply('Произошла ошибка. Попробуйте снова позже или обратитесь в поддержку.');
 });
 
-// Запуск бота
+// Запуск бота с инициализацией БД
 const PORT = process.env.PORT || 3000;
 
-bot.launch({
-  webhook: process.env.NODE_ENV === 'production' ? {
-    domain: process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost',
-    port: Number(PORT)
-  } : undefined
-}).then(() => {
-  console.log('Bot is running...');
-  console.log(`Environment: ${process.env.NODE_ENV}`);
-  console.log(`Port: ${PORT}`);
-});
+async function startBot() {
+  try {
+    // 1. Подключаемся к БД
+    await initializeDatabase();
+    console.log('✅ База данных инициализирована');
+
+    // 2. Создаем UserService
+    userService = new UserService();
+    console.log('✅ UserService создан');
+
+    // 3. Запускаем бота
+    await bot.launch({
+      webhook: process.env.NODE_ENV === 'production' ? {
+        domain: process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost',
+        port: Number(PORT)
+      } : undefined
+    });
+
+    console.log('✅ Бот запущен успешно');
+    console.log(`Environment: ${process.env.NODE_ENV}`);
+    console.log(`Port: ${PORT}`);
+  } catch (error) {
+    console.error('❌ Ошибка запуска бота:', error);
+    process.exit(1);
+  }
+}
+
+// Запускаем бота
+startBot();
 
 // Graceful shutdown
 process.once('SIGINT', () => bot.stop('SIGINT'));

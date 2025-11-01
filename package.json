@@ -8,7 +8,8 @@
     "dev": "ts-node src/index.ts",
     "build": "tsc",
     "watch": "tsc -w",
-    "get-file-id": "ts-node get_file_id_bot.ts"
+    "get-file-id": "ts-node get_file_id_bot.ts",
+    "retargeting": "ts-node src/retargeting.ts"
   },
   "keywords": [
     "telegram",
@@ -18,9 +19,13 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@types/pg": "^8.15.6",
     "axios": "^1.6.2",
     "dotenv": "^16.3.1",
-    "telegraf": "^4.15.0"
+    "pg": "^8.16.3",
+    "reflect-metadata": "^0.2.2",
+    "telegraf": "^4.15.0",
+    "typeorm": "^0.3.27"
   },
   "devDependencies": {
     "@types/node": "^20.10.4",
