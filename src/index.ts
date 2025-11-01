@@ -4,7 +4,7 @@ import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import { formatCardNumber, logWithTimestamp, delay } from './utils';
 import { MESSAGES, BUTTON_LABELS, VIDEO_CAPTIONS, TIMING } from './constants';
-import { validateReceiptWithGemini } from './receiptValidator';
+import { validateReceiptWithGemini, ReceiptValidationResult } from './receiptValidator';
 
 dotenv.config();
 
@@ -262,11 +262,15 @@ bot.on(message('photo'), async (ctx) => {
 
   await ctx.reply('🔍 Проверяю вашу квитанцию...');
 
-  // Здесь должна быть логика проверки квитанции через OCR или другой метод
-  // Для упрощения, делаем базовую проверку
-  const isValid = await validateReceipt(ctx);
+  // Проверяем квитанцию через Gemini AI
+  const validationResult = await validateReceipt(ctx);
 
-  if (isValid) {
+  if (!validationResult) {
+    await ctx.reply('❌ Произошла ошибка при проверке квитанции. Попробуйте еще раз.');
+    return;
+  }
+
+  if (validationResult.isValid) {
     await ctx.reply('✅ Квитанция принята! Генерирую ваши персональные ссылки...');
     
     try {
@@ -291,15 +295,25 @@ bot.on(message('photo'), async (ctx) => {
       await ctx.reply('❌ Произошла ошибка при генерации ссылок. Пожалуйста, обратитесь в поддержку.');
     }
   } else {
+    // ЕДИНСТВЕННОЕ консолидированное сообщение при отказе
+    const imageDesc = validationResult.imageDescription || 'Изображение квитанции';
+    const reason = validationResult.reason || 'Квитанция не прошла проверку';
+    
+    // Определяем валюту и сумму для инструкций
+    const userState = userStates.get(userId);
+    const currency = userState?.currency || 'RUB';
+    const expectedAmount = currency === 'UAH' ? config.paymentAmountUAH : config.paymentAmount;
+    const expectedCard = currency === 'UAH' ? config.cardNumberUAH : config.cardNumber;
+    const currencySymbol = currency === 'UAH' ? '₴' : '₽';
+    
     await ctx.reply(
-      '❌ К сожалению, квитанция не прошла автоматическую проверку.\n\n' +
-      'Пожалуйста, убедитесь что:\n' +
-      `✓ Сумма перевода: ${config.paymentAmount} рублей\n` +
-      `✓ Номер карты получателя: ${config.cardNumber}\n` +
-      '✓ На квитанции четко видны все данные\n\n' +
-      'Вы можете:\n' +
-      '• Попробовать отправить квитанцию снова\n' +
-      '• Или отправить квитанцию ассистенту для ручной проверки',
+      `🔍 **Что я вижу на фото:**\n${imageDesc}\n\n` +
+      `❌ **Почему не подошло:**\n${reason}\n\n` +
+      `📋 **Как исправить:**\n` +
+      `• Убедитесь что сумма ${expectedAmount} ${currencySymbol}\n` +
+      `• Проверьте номер карты получателя (*${expectedCard.slice(-4)})\n` +
+      `• Сделайте четкое фото квитанции\n` +
+      `• Отправьте квитанцию снова`,
       Markup.inlineKeyboard([
         [Markup.button.url('📨 Написать ассистенту', 'https://t.me/ADA_gii')]
       ])
@@ -308,12 +322,12 @@ bot.on(message('photo'), async (ctx) => {
 });
 
 // Функция проверки квитанции
-async function validateReceipt(ctx: Context): Promise<boolean> {
+async function validateReceipt(ctx: Context): Promise<ReceiptValidationResult | null> {
   try {
     const photo = ctx.message && 'photo' in ctx.message ? ctx.message.photo : null;
     
     if (!photo || photo.length === 0) {
-      return false;
+      return null;
     }
 
     // Получаем файл с максимальным разрешением
@@ -322,7 +336,7 @@ async function validateReceipt(ctx: Context): Promise<boolean> {
     
     if (!file.file_path) {
       logWithTimestamp('No file path available for photo');
-      return false;
+      return null;
     }
 
     // Формируем URL для скачивания фото
@@ -354,35 +368,14 @@ async function validateReceipt(ctx: Context): Promise<boolean> {
 
     logWithTimestamp('Validation result', validationResult);
 
-    // Если проверка не прошла, отправляем причину пользователю
-    if (!validationResult.isValid && validationResult.reason) {
-      // Экранируем специальные символы Markdown
-      const escapedReason = validationResult.reason
-        .replace(/[_*\[\]()~`>#+=|{}.!-]/g, '\\$&');
-      
-      await ctx.reply(
-        `${escapedReason}\n\n` +
-        'Вы можете:\n' +
-        '• Попробовать отправить другую квитанцию\n' +
-        '• Или отправить квитанцию ассистенту для ручной проверки',
-        Markup.inlineKeyboard([
-          [Markup.button.url('📨 Написать ассистенту', 'https://t.me/ADA_gii')]
-        ])
-      );
-    }
-
-    return validationResult.isValid;
+    // Возвращаем полный результат валидации (сообщение отправим снаружи)
+    return validationResult;
     
   } catch (error) {
     logWithTimestamp('Error in validateReceipt', error);
     
-    // Возвращаем false при ошибке - не используем fallback
-    await ctx.reply(
-      '❌ Произошла ошибка при проверке квитанции.\n\n' +
-      'Пожалуйста, попробуйте отправить фото еще раз или обратитесь в поддержку.'
-    );
-    
-    return false;
+    // Возвращаем null при ошибке
+    return null;
   }
 }
 

@@ -9,6 +9,7 @@ export interface ReceiptValidationResult {
   confidence: number;
   extractedAmount?: number;
   extractedCardNumber?: string;
+  imageDescription?: string;
   reason?: string;
 }
 
@@ -79,8 +80,8 @@ export async function validateReceiptWithGemini(
               text: prompt
             },
             {
-              inline_data: {
-                mime_type: 'image/jpeg',
+              inlineData: {
+                mimeType: 'image/jpeg',
                 data: base64Image
               }
             }
@@ -89,7 +90,7 @@ export async function validateReceiptWithGemini(
       ],
       generationConfig: {
         temperature: 0.2,
-        maxOutputTokens: 4096, // Увеличиваем лимит токенов
+        maxOutputTokens: 4096,
         topP: 0.8,
         topK: 40,
       }
@@ -113,6 +114,16 @@ export async function validateReceiptWithGemini(
         break; // Успешный запрос - выходим из цикла
       } catch (error: any) {
         lastError = error;
+        
+        // Логируем детали ошибки
+        if (error.response) {
+          logWithTimestamp('Gemini API error response', { 
+            status: error.response.status,
+            statusText: error.response.statusText,
+            data: error.response.data 
+          });
+        }
+        
         if (error.response?.status === 503 && attempt < maxRetries - 1) {
           const delayMs = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
           logWithTimestamp(`Gemini API 503 error, retrying in ${delayMs}ms (attempt ${attempt + 1}/${maxRetries})`, {});
@@ -239,6 +250,7 @@ function validateAnalysis(
     return {
       isValid: false,
       confidence: analysis.confidence || 0,
+      imageDescription: analysis.imageDescription,
       reason: `⚠️ Обнаружены признаки мошенничества или подделки квитанции!\n\n🔍 Детали:\n${fraudDetails}`,
     };
   }
@@ -259,6 +271,7 @@ function validateAnalysis(
       isValid: false,
       confidence: analysis.confidence || 0,
       extractedAmount,
+      imageDescription: analysis.imageDescription,
       reason: `❌ Неверная сумма платежа.
 
 💰 Ожидается: ${expectedAmount} ${currency === 'UAH' ? '₴' : '₽'}
@@ -274,6 +287,7 @@ function validateAnalysis(
     return {
       isValid: false,
       confidence: analysis.confidence || 0,
+      imageDescription: analysis.imageDescription,
       reason: `❌ Не удалось распознать номер карты получателя.\n\nПожалуйста, убедитесь, что номер карты четко виден на квитанции.`,
     };
   }
@@ -285,6 +299,7 @@ function validateAnalysis(
       isValid: false,
       confidence: analysis.confidence || 0,
       extractedCardNumber,
+      imageDescription: analysis.imageDescription,
       reason: `❌ Неверный номер карты получателя.\n\n🎯 Ожидается карта: *${expectedLast4}\n📱 Найдено на квитанции: *${extractedLast4}`,
     };
   }
@@ -295,6 +310,7 @@ function validateAnalysis(
     return {
       isValid: false,
       confidence,
+      imageDescription: analysis.imageDescription,
       reason: 'Низкое качество квитанции или данные плохо читаются',
     };
   }
@@ -305,6 +321,7 @@ function validateAnalysis(
     confidence,
     extractedAmount,
     extractedCardNumber,
+    imageDescription: analysis.imageDescription,
   };
 }
 
