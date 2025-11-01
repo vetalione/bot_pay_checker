@@ -196,7 +196,7 @@ bot.action('want_more', async (ctx) => {
   const videoFileId = config.videoFileIds[0];
   
   if (videoFileId) {
-    await ctx.replyWithDocument(videoFileId, {
+    await ctx.replyWithVideo(videoFileId, {
       caption: '📹 Видео 1 из 3'
     });
   } else {
@@ -241,7 +241,7 @@ bot.action('continue_watching', async (ctx) => {
   const videoFileId = config.videoFileIds[1];
   
   if (videoFileId) {
-    await ctx.replyWithDocument(videoFileId, {
+    await ctx.replyWithVideo(videoFileId, {
       caption: '📹 Видео 2 из 3'
     });
   } else {
@@ -286,7 +286,7 @@ bot.action('ready_for_more', async (ctx) => {
   const videoFileId = config.videoFileIds[2];
   
   if (videoFileId) {
-    await ctx.replyWithDocument(videoFileId, {
+    await ctx.replyWithVideo(videoFileId, {
       caption: '📹 Видео 3 из 3'
     });
   } else {
