@@ -197,7 +197,10 @@ bot.action('want_more', async (ctx) => {
   
   if (videoFileId) {
     await ctx.replyWithVideo(videoFileId, {
-      caption: '📹 Видео 1 из 3'
+      caption: '📹 Видео 1 из 3',
+      supports_streaming: true,
+      width: 1280,
+      height: 720
     });
   } else {
     await ctx.reply('⚠️ Видео временно недоступно. Пожалуйста, свяжитесь с поддержкой.');
@@ -242,7 +245,10 @@ bot.action('continue_watching', async (ctx) => {
   
   if (videoFileId) {
     await ctx.replyWithVideo(videoFileId, {
-      caption: '📹 Видео 2 из 3'
+      caption: '📹 Видео 2 из 3',
+      supports_streaming: true,
+      width: 1280,
+      height: 720
     });
   } else {
     await ctx.reply('⚠️ Видео временно недоступно. Пожалуйста, свяжитесь с поддержкой.');
@@ -287,7 +293,10 @@ bot.action('ready_for_more', async (ctx) => {
   
   if (videoFileId) {
     await ctx.replyWithVideo(videoFileId, {
-      caption: '📹 Видео 3 из 3'
+      caption: '📹 Видео 3 из 3',
+      supports_streaming: true,
+      width: 1280,
+      height: 720
     });
   } else {
     await ctx.reply('⚠️ Видео временно недоступно. Пожалуйста, свяжитесь с поддержкой.');
