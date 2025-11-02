@@ -505,6 +505,9 @@ bot.action('pay_uah', async (ctx) => {
   await trackUserAction(userService, ctx, 'choose_uah', 'waiting_receipt');
   await updateUserStep(userService, userId, 'waiting_receipt');
   await setUserCurrency(userService, userId, 'UAH');
+  
+  // Отмечаем время начала ожидания квитанции (для аналитики)
+  await userService.markWaitingForReceipt(userId);
 
   // Форматируем номер карты для отображения
   const formattedCard = config.cardNumberUAH.replace(/(\d{4})(?=\d)/g, '$1 ');
