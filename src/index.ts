@@ -9,6 +9,7 @@ import { initializeDatabase } from './database';
 import { UserService } from './userService';
 import { trackUserAction, updateUserStep, setUserCurrency, markUserAsPaid } from './dbHelpers';
 import { StatsService } from './statsService';
+import { ReminderService } from './reminderService';
 
 dotenv.config();
 
@@ -206,6 +207,9 @@ async function showPaymentButton(ctx: Context) {
   state.step = 'payment_choice';
   userStates.set(userId, state);
 
+  // Отмечаем время показа выбора оплаты
+  await userService.markPaymentChoiceShown(userId);
+
   await ctx.reply(
     '✅ Вы посмотрели все видео!\n\n' +
     '💎 Чтобы получить доступ к закрытому каналу с эксклюзивным контентом, ' +
@@ -387,6 +391,9 @@ bot.action('get_advantage', async (ctx) => {
   
   state.step = 'payment_choice';
   userStates.set(userId, state);
+
+  // Отмечаем время показа выбора оплаты
+  await userService.markPaymentChoiceShown(userId);
 
   await ctx.reply(
     '💎 Для получения доступа к закрытому каналу с эксклюзивным контентом, нажмите кнопку ниже.',
@@ -790,6 +797,7 @@ bot.catch((err, ctx) => {
 
 // Запуск бота с инициализацией БД
 const PORT = process.env.PORT || 3000;
+let reminderService: ReminderService;
 
 async function startBot() {
   try {
@@ -805,7 +813,12 @@ async function startBot() {
     const statsService = new StatsService();
     await statsService.logPaymentStats();
 
-    // 4. Запускаем бота
+    // 4. Запускаем сервис напоминаний
+    reminderService = new ReminderService(bot);
+    reminderService.start();
+    console.log('✅ ReminderService запущен');
+
+    // 5. Запускаем бота
     await bot.launch({
       webhook: process.env.NODE_ENV === 'production' ? {
         domain: process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost',
@@ -826,7 +839,13 @@ async function startBot() {
 startBot();
 
 // Graceful shutdown
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+process.once('SIGINT', () => {
+  if (reminderService) reminderService.stop();
+  bot.stop('SIGINT');
+});
+process.once('SIGTERM', () => {
+  if (reminderService) reminderService.stop();
+  bot.stop('SIGTERM');
+});
 
 export default bot;

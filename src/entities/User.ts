@@ -33,6 +33,12 @@ export class User {
   @Column({ type: 'timestamp', nullable: true })
   lastActivityAt?: Date;
 
+  @Column({ type: 'timestamp', nullable: true })
+  paymentChoiceShownAt?: Date;
+
+  @Column({ type: 'boolean', default: false })
+  paymentReminderSent: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 
