@@ -19,7 +19,7 @@ async function testReminderSystem() {
     console.log(`Всего на этапе выбора оплаты: ${usersAtPaymentChoice.length}`);
 
     if (usersAtPaymentChoice.length > 0) {
-      console.log('\n📋 Детали по пользователям:');
+      console.log('\n📋 Детали по пользователям (выбор оплаты):');
       
       for (const user of usersAtPaymentChoice) {
         console.log(`\nUserId: ${user.userId}`);
@@ -40,14 +40,51 @@ async function testReminderSystem() {
       }
     }
 
+    // Проверяем пользователей, ожидающих отправки квитанции (RUB)
+    const usersWaitingReceipt = await userRepository.find({
+      where: { currentStep: 'waiting_receipt', currency: 'RUB' }
+    });
+
+    console.log('\n\n📊 СТАТИСТИКА ПО ОЖИДАНИЮ КВИТАНЦИИ (RUB):');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`Всего ожидают отправки квитанции: ${usersWaitingReceipt.length}`);
+
+    if (usersWaitingReceipt.length > 0) {
+      console.log('\n📋 Детали по пользователям (ожидание квитанции):');
+      
+      for (const user of usersWaitingReceipt) {
+        console.log(`\nUserId: ${user.userId}`);
+        console.log(`Username: @${user.username || 'unknown'}`);
+        console.log(`Валюта: ${user.currency}`);
+        console.log(`Время начала ожидания: ${user.waitingReceiptSince || 'НЕ УСТАНОВЛЕНО'}`);
+        console.log(`Напоминание отправлено: ${user.receiptReminderSent ? 'ДА' : 'НЕТ'}`);
+        
+        if (user.waitingReceiptSince) {
+          const minutesAgo = Math.floor((Date.now() - user.waitingReceiptSince.getTime()) / (60 * 1000));
+          console.log(`Прошло минут: ${minutesAgo}`);
+          
+          if (minutesAgo >= 5 && !user.receiptReminderSent) {
+            console.log('⚠️  ДОЛЖНО БЫТЬ ОТПРАВЛЕНО НАПОМИНАНИЕ О КВИТАНЦИИ!');
+          }
+        }
+        console.log('─'.repeat(50));
+      }
+    }
+
     // Статистика по напоминаниям
-    const remindersSent = await userRepository.count({
+    const paymentChoiceReminders = await userRepository.count({
       where: { paymentReminderSent: true }
+    });
+
+    const receiptReminders = await userRepository.count({
+      where: { receiptReminderSent: true }
     });
 
     console.log('\n📈 ОБЩАЯ СТАТИСТИКА:');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log(`Всего отправлено напоминаний: ${remindersSent}`);
+    console.log(`Отправлено напоминаний о выборе оплаты: ${paymentChoiceReminders}`);
+    console.log(`Отправлено напоминаний о квитанции: ${receiptReminders}`);
+    console.log(`Всего напоминаний: ${paymentChoiceReminders + receiptReminders}`);
 
     await AppDataSource.destroy();
     console.log('\n✅ Подключение закрыто');
