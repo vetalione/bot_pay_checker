@@ -10,7 +10,8 @@
     "watch": "tsc -w",
     "get-file-id": "ts-node get_file_id_bot.ts",
     "retargeting": "ts-node src/retargeting.ts",
-    "analytics": "ts-node src/analytics.ts"
+    "analytics": "ts-node src/analytics.ts",
+    "broadcast-stuck": "ts-node scripts/send_stuck_users_message.ts"
   },
   "keywords": [
     "telegram",
