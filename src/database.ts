@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import { User } from './entities/User';
 import { UserAction } from './entities/UserAction';
+import { PaymentStats } from './entities/PaymentStats';
 
 // Получаем DATABASE_URL из переменных окружения
 // Для Railway это будет автоматически
@@ -13,7 +14,7 @@ export const AppDataSource = new DataSource({
   url: databaseUrl,
   synchronize: true, // Автоматически создает таблицы (для production лучше использовать migrations)
   logging: false,
-  entities: [User, UserAction],
+  entities: [User, UserAction, PaymentStats],
   subscribers: [],
   migrations: [],
 });

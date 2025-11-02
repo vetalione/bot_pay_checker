@@ -8,6 +8,7 @@ import { validateReceiptWithGemini, ReceiptValidationResult } from './receiptVal
 import { initializeDatabase } from './database';
 import { UserService } from './userService';
 import { trackUserAction, updateUserStep, setUserCurrency, markUserAsPaid } from './dbHelpers';
+import { StatsService } from './statsService';
 
 dotenv.config();
 
@@ -101,6 +102,38 @@ bot.start(async (ctx) => {
       }
     }
   );
+});
+
+// Команда /stats для админа
+bot.command('stats', async (ctx) => {
+  const userId = ctx.from.id;
+  
+  // Проверяем что это админ
+  if (userId !== 278263484) {
+    await ctx.reply('У вас нет доступа к этой команде.');
+    return;
+  }
+
+  const statsService = new StatsService();
+  const stats = await statsService.getPaymentStats();
+
+  if (!stats) {
+    await ctx.reply('❌ Статистика недоступна');
+    return;
+  }
+
+  const message = 
+    '📊 <b>СТАТИСТИКА ПЛАТЕЖЕЙ</b>\n' +
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+    `👥 <b>Всего уникальных пользователей:</b> ${stats.total_users_started}\n` +
+    `✅ <b>Успешных оплат:</b> ${stats.total_successful_payments}\n` +
+    `💵 <b>Оплат в рублях:</b> ${stats.total_rub_payments}\n` +
+    `💴 <b>Оплат в гривнах:</b> ${stats.total_uah_payments}\n` +
+    `📷 <b>Отправлено "не квитанций":</b> ${stats.total_non_receipts}\n` +
+    `❌ <b>Квитанций не прошедших проверку:</b> ${stats.total_failed_receipts}\n\n` +
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
+
+  await ctx.reply(message, { parse_mode: 'HTML' });
 });
 
 // Функция отправки видео
@@ -768,7 +801,11 @@ async function startBot() {
     userService = new UserService();
     console.log('✅ UserService создан');
 
-    // 3. Запускаем бота
+    // 3. Выводим статистику платежей
+    const statsService = new StatsService();
+    await statsService.logPaymentStats();
+
+    // 4. Запускаем бота
     await bot.launch({
       webhook: process.env.NODE_ENV === 'production' ? {
         domain: process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost',
