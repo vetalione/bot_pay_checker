@@ -45,6 +45,12 @@ export class User {
   @Column({ type: 'boolean', default: false })
   receiptReminderSent: boolean;
 
+  @Column({ type: 'timestamp', nullable: true })
+  video1ShownAt?: Date;
+
+  @Column({ type: 'boolean', default: false })
+  video1ReminderSent: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

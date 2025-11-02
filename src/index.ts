@@ -264,6 +264,9 @@ bot.action('want_more', async (ctx) => {
   // Сохраняем в БД
   await trackUserAction(userService, ctx, 'click_want_more', 'video1');
   await updateUserStep(userService, userId, 'video1');
+  
+  // Отмечаем время показа первого видео (для напоминания через 10 минут)
+  await userService.markVideo1Shown(userId);
 
   await ctx.reply(
     'Отлично, тогда обязательно посмотри это короткое видео прямо сейчас - и если хотя бы один раз узнаешь себя, значит ты все делаешь правильно и вот-вот твой инстаграм разделится на "До" и "После"!'
@@ -428,6 +431,40 @@ bot.action('get_advantage', async (ctx) => {
 // ═══════════════════════════════════════════════════════════════
 // ОПЛАТА: Обработчики выбора валюты
 // ═══════════════════════════════════════════════════════════════
+
+// Обработка кнопки "Хочу!" из напоминания video1
+bot.action('video1_skip_to_payment', async (ctx) => {
+  const userId = ctx.from.id;
+  const state = userStates.get(userId) || { 
+    step: 'video1',
+    userId,
+    username: ctx.from.username
+  };
+
+  await ctx.answerCbQuery();
+
+  // Track skip to payment from video1
+  await trackUserAction(userService, ctx, 'video1_skip_to_payment', 'payment_choice');
+  
+  state.step = 'payment_choice';
+  userStates.set(userId, state);
+
+  // Обновляем шаг и отмечаем время показа выбора оплаты
+  await updateUserStep(userService, userId, 'payment_choice');
+  await userService.markPaymentChoiceShown(userId);
+
+  await ctx.reply(
+    '💎 Отлично! Выберите удобный способ оплаты:',
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '💵 Оплатить рублями (2000 ₽)', callback_data: 'pay_rub' }],
+          [{ text: '💴 Оплатить гривнами (1050 ₴)', callback_data: 'pay_uah' }]
+        ]
+      }
+    }
+  );
+});
 
 // Обработка нажатия кнопки "Оплатить рублями"
 bot.action('pay_rub', async (ctx) => {

@@ -7,6 +7,7 @@ export class ReminderService {
   private bot: Telegraf;
   private intervalId?: NodeJS.Timeout;
   private readonly REMINDER_DELAY_MS = 5 * 60 * 1000; // 5 минут
+  private readonly VIDEO1_REMINDER_DELAY_MS = 10 * 60 * 1000; // 10 минут
 
   constructor(bot: Telegraf) {
     this.bot = bot;
@@ -44,6 +45,7 @@ export class ReminderService {
     try {
       await this.checkPaymentChoiceReminders();
       await this.checkReceiptReminders();
+      await this.checkVideo1Reminders();
     } catch (error) {
       console.error('❌ Ошибка в checkAndSendReminders:', error);
     }
@@ -175,6 +177,61 @@ export class ReminderService {
       }
     } catch (error) {
       console.error(`❌ Ошибка сброса напоминания для пользователя ${userId}:`, error);
+    }
+  }
+
+  /**
+   * Проверка напоминаний для застрявших на video1
+   */
+  private async checkVideo1Reminders() {
+    const userRepository = AppDataSource.getRepository(User);
+    
+    // Вычисляем время 10 минут назад
+    const tenMinutesAgo = new Date(Date.now() - this.VIDEO1_REMINDER_DELAY_MS);
+
+    // Находим пользователей застрявших на video1 больше 10 минут
+    const usersToRemind = await userRepository.find({
+      where: {
+        currentStep: 'video1',
+        hasPaid: false,
+        video1ReminderSent: false,
+        video1ShownAt: MoreThan(new Date(0))
+      }
+    });
+
+    console.log(`📊 Найдено пользователей для напоминания (video1): ${usersToRemind.length}`);
+
+    for (const user of usersToRemind) {
+      // Проверяем что прошло ровно 10 минут или больше
+      if (user.video1ShownAt && user.video1ShownAt <= tenMinutesAgo) {
+        await this.sendVideo1Reminder(user);
+      }
+    }
+  }
+
+  /**
+   * Отправка напоминания для застрявших на video1
+   */
+  private async sendVideo1Reminder(user: User) {
+    try {
+      console.log(`🔔 Отправка напоминания video1 пользователю ${user.userId}`);
+
+      await this.bot.telegram.sendMessage(
+        user.userId,
+        'Нет времени смотреть видео? Понимаю, я тоже все время на бегу. Хочешь я просто сразу дам тебе ссылку на платный канал со всеми моими инструментами и инструкцией как пользоваться?',
+        Markup.inlineKeyboard([
+          [Markup.button.callback('✨ Хочу!', 'video1_skip_to_payment')]
+        ])
+      );
+
+      // Отмечаем что напоминание отправлено
+      const userRepository = AppDataSource.getRepository(User);
+      user.video1ReminderSent = true;
+      await userRepository.save(user);
+
+      console.log(`✅ Напоминание video1 отправлено пользователю ${user.userId}`);
+    } catch (error) {
+      console.error(`❌ Ошибка отправки напоминания video1 пользователю ${user.userId}:`, error);
     }
   }
 }

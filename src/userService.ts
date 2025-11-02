@@ -83,6 +83,16 @@ export class UserService {
   }
 
   /**
+   * Отметить что пользователю показано первое видео
+   */
+  async markVideo1Shown(userId: number): Promise<void> {
+    await this.userRepository.update({ userId }, {
+      video1ShownAt: new Date(),
+      video1ReminderSent: false
+    });
+  }
+
+  /**
    * Отметить пользователя как оплатившего
    */
   async markAsPaid(userId: number): Promise<void> {
