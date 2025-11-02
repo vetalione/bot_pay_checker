@@ -117,21 +117,38 @@ bot.command('stats', async (ctx) => {
 
   const statsService = new StatsService();
   const stats = await statsService.getPaymentStats();
+  const steps = await statsService.getCurrentSteps();
 
-  if (!stats) {
+  if (!stats || !steps) {
     await ctx.reply('❌ Статистика недоступна');
     return;
   }
+
+  // Вычисляем конверсию
+  const conversionRate = stats.total_users_started > 0 
+    ? ((stats.total_successful_payments / stats.total_users_started) * 100).toFixed(2)
+    : '0.00';
 
   const message = 
     '📊 <b>СТАТИСТИКА ПЛАТЕЖЕЙ</b>\n' +
     '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
     `👥 <b>Всего уникальных пользователей:</b> ${stats.total_users_started}\n` +
-    `✅ <b>Успешных оплат:</b> ${stats.total_successful_payments}\n` +
+    `✅ <b>Успешных оплат:</b> ${stats.total_successful_payments} (${conversionRate}%)\n` +
     `💵 <b>Оплат в рублях:</b> ${stats.total_rub_payments}\n` +
     `💴 <b>Оплат в гривнах:</b> ${stats.total_uah_payments}\n` +
     `📷 <b>Отправлено "не квитанций":</b> ${stats.total_non_receipts}\n` +
     `❌ <b>Квитанций не прошедших проверку:</b> ${stats.total_failed_receipts}\n\n` +
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+    '📈 <b>ВОРОНКА КОНВЕРСИИ</b>\n' +
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+    `👥 <b>Начали:</b> ${steps.total_users_started}\n` +
+    `🚫 <b>Застряли на старте:</b> ${steps.stuck_at_start}\n` +
+    `📹 <b>Застряли на видео 1:</b> ${steps.stuck_at_video1}\n` +
+    `📹 <b>Застряли на видео 2:</b> ${steps.stuck_at_video2}\n` +
+    `📹 <b>Застряли на видео 3:</b> ${steps.stuck_at_video3}\n` +
+    `💳 <b>Застряли на выборе оплаты:</b> ${steps.stuck_at_payment_choice}\n` +
+    `⏳ <b>Выбрали оплату, нет квитанции:</b> ${steps.chose_payment_no_receipt}\n` +
+    `❌ <b>Квитанция не подошла:</b> ${steps.receipt_rejected}\n\n` +
     '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
 
   await ctx.reply(message, { parse_mode: 'HTML' });
@@ -807,9 +824,10 @@ async function startBot() {
     userService = new UserService();
     console.log('✅ UserService создан');
 
-    // 3. Выводим статистику платежей
+    // 3. Выводим статистику платежей и воронки
     const statsService = new StatsService();
     await statsService.logPaymentStats();
+    await statsService.logFunnelStats();
 
     // 4. Запускаем сервис напоминаний
     reminderService = new ReminderService(bot);

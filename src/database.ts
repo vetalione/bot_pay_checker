@@ -3,6 +3,7 @@ import { DataSource } from 'typeorm';
 import { User } from './entities/User';
 import { UserAction } from './entities/UserAction';
 import { PaymentStats } from './entities/PaymentStats';
+import { CurrentSteps } from './entities/CurrentSteps';
 
 // Получаем DATABASE_URL из переменных окружения
 // Для Railway это будет автоматически
@@ -14,7 +15,7 @@ export const AppDataSource = new DataSource({
   url: databaseUrl,
   synchronize: true, // Автоматически создает таблицы (для production лучше использовать migrations)
   logging: process.env.NODE_ENV !== 'production' ? ['error', 'warn', 'schema'] : ['error'],
-  entities: [User, UserAction, PaymentStats],
+  entities: [User, UserAction, PaymentStats, CurrentSteps],
   subscribers: [],
   migrations: [],
   // Настройки для стабильного соединения с Railway
