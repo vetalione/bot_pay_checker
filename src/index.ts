@@ -458,7 +458,7 @@ bot.action('pay_rub', async (ctx) => {
   await ctx.reply(
     '💬 Если у вас возникли вопросы или трудности с оплатой:',
     Markup.inlineKeyboard([
-      [Markup.button.url('📨 Связаться с ассистентом', 'https://t.me/ADA_gii')]
+      [Markup.button.url('📨 Связаться с ассистентом', 'https://t.me/vetalsmirnov')]
     ])
   );
 });
@@ -505,7 +505,7 @@ bot.action('pay_uah', async (ctx) => {
   await ctx.reply(
     '💬 Если у вас возникли вопросы или трудности с оплатой:',
     Markup.inlineKeyboard([
-      [Markup.button.url('📨 Связаться с ассистентом', 'https://t.me/ADA_gii')]
+      [Markup.button.url('📨 Связаться с ассистентом', 'https://t.me/vetalsmirnov')]
     ])
   );
 });
@@ -602,7 +602,7 @@ bot.on(message('photo'), async (ctx) => {
       `• Сделайте четкое фото квитанции\n` +
       `• Отправьте квитанцию снова`,
       Markup.inlineKeyboard([
-        [Markup.button.url('📨 Написать ассистенту', 'https://t.me/ADA_gii')]
+        [Markup.button.url('📨 Написать ассистенту', 'https://t.me/vetalsmirnov')]
       ])
     );
   }
