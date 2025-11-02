@@ -676,6 +676,35 @@ async function generateChatInviteLink(userId: number): Promise<string> {
   }
 }
 
+// Обработчик для получения Video File IDs (только для админа)
+bot.on(message('video'), async (ctx) => {
+  const userId = ctx.from.id;
+  const ADMIN_ID = 278263484; // Ваш Telegram ID
+  
+  if (userId === ADMIN_ID) {
+    const videoFileId = ctx.message.video.file_id;
+    const fileSize = ctx.message.video.file_size || 0;
+    const duration = ctx.message.video.duration;
+    const width = ctx.message.video.width;
+    const height = ctx.message.video.height;
+    
+    await ctx.reply(
+      `✅ Получен Video File ID!\n\n` +
+      `📹 Параметры видео:\n` +
+      `• Размер: ${(fileSize / 1024 / 1024).toFixed(2)} МБ\n` +
+      `• Длительность: ${duration} сек\n` +
+      `• Разрешение: ${width}x${height}\n\n` +
+      `🔑 File ID для .env:\n\n` +
+      `\`${videoFileId}\`\n\n` +
+      `Скопируйте и добавьте на Railway как:\n` +
+      `VIDEO_X_FILE_ID=${videoFileId}`,
+      { parse_mode: 'Markdown' }
+    );
+    
+    console.log('✅ Video File ID:', videoFileId);
+  }
+});
+
 // Обработка текстовых сообщений
 bot.on(message('text'), async (ctx) => {
   const userId = ctx.from.id;
