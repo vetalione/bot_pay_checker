@@ -42,41 +42,78 @@ export class ReminderService {
    */
   private async checkAndSendReminders() {
     try {
-      const userRepository = AppDataSource.getRepository(User);
-      
-      // Вычисляем время 5 минут назад
-      const fiveMinutesAgo = new Date(Date.now() - this.REMINDER_DELAY_MS);
-
-      // Находим пользователей, которым показали выбор оплаты больше 5 минут назад
-      // но они еще не выбрали валюту и им еще не отправляли напоминание
-      const usersToRemind = await userRepository.find({
-        where: {
-          currentStep: 'payment_choice',
-          currency: null as any, // Еще не выбрали валюту
-          paymentReminderSent: false,
-          paymentChoiceShownAt: MoreThan(new Date(0)) // Проверяем что поле установлено
-        }
-      });
-
-      console.log(`📊 Найдено пользователей для напоминания: ${usersToRemind.length}`);
-
-      for (const user of usersToRemind) {
-        // Проверяем что прошло ровно 5 минут или больше
-        if (user.paymentChoiceShownAt && user.paymentChoiceShownAt <= fiveMinutesAgo) {
-          await this.sendReminder(user);
-        }
-      }
+      await this.checkPaymentChoiceReminders();
+      await this.checkReceiptReminders();
     } catch (error) {
       console.error('❌ Ошибка в checkAndSendReminders:', error);
     }
   }
 
   /**
-   * Отправка напоминания конкретному пользователю
+   * Проверка напоминаний о выборе способа оплаты
    */
-  private async sendReminder(user: User) {
+  private async checkPaymentChoiceReminders() {
+    const userRepository = AppDataSource.getRepository(User);
+    
+    // Вычисляем время 5 минут назад
+    const fiveMinutesAgo = new Date(Date.now() - this.REMINDER_DELAY_MS);
+
+    // Находим пользователей, которым показали выбор оплаты больше 5 минут назад
+    // но они еще не выбрали валюту и им еще не отправляли напоминание
+    const usersToRemind = await userRepository.find({
+      where: {
+        currentStep: 'payment_choice',
+        currency: null as any, // Еще не выбрали валюту
+        paymentReminderSent: false,
+        paymentChoiceShownAt: MoreThan(new Date(0)) // Проверяем что поле установлено
+      }
+    });
+
+    console.log(`📊 Найдено пользователей для напоминания (выбор оплаты): ${usersToRemind.length}`);
+
+    for (const user of usersToRemind) {
+      // Проверяем что прошло ровно 5 минут или больше
+      if (user.paymentChoiceShownAt && user.paymentChoiceShownAt <= fiveMinutesAgo) {
+        await this.sendPaymentChoiceReminder(user);
+      }
+    }
+  }
+
+  /**
+   * Проверка напоминаний об отправке квитанции (для RUB)
+   */
+  private async checkReceiptReminders() {
+    const userRepository = AppDataSource.getRepository(User);
+    
+    // Вычисляем время 5 минут назад
+    const fiveMinutesAgo = new Date(Date.now() - this.REMINDER_DELAY_MS);
+
+    // Находим пользователей, которые выбрали RUB и ждут больше 5 минут
+    const usersToRemind = await userRepository.find({
+      where: {
+        currentStep: 'waiting_receipt',
+        currency: 'RUB',
+        receiptReminderSent: false,
+        waitingReceiptSince: MoreThan(new Date(0))
+      }
+    });
+
+    console.log(`📊 Найдено пользователей для напоминания (квитанция RUB): ${usersToRemind.length}`);
+
+    for (const user of usersToRemind) {
+      // Проверяем что прошло ровно 5 минут или больше
+      if (user.waitingReceiptSince && user.waitingReceiptSince <= fiveMinutesAgo) {
+        await this.sendReceiptReminder(user);
+      }
+    }
+  }
+
+  /**
+   * Отправка напоминания о выборе способа оплаты
+   */
+  private async sendPaymentChoiceReminder(user: User) {
     try {
-      console.log(`🔔 Отправка напоминания пользователю ${user.userId}`);
+      console.log(`🔔 Отправка напоминания о выборе оплаты пользователю ${user.userId}`);
 
       await this.bot.telegram.sendMessage(
         user.userId,
@@ -91,9 +128,35 @@ export class ReminderService {
       user.paymentReminderSent = true;
       await userRepository.save(user);
 
-      console.log(`✅ Напоминание отправлено пользователю ${user.userId}`);
+      console.log(`✅ Напоминание о выборе оплаты отправлено пользователю ${user.userId}`);
     } catch (error) {
       console.error(`❌ Ошибка отправки напоминания пользователю ${user.userId}:`, error);
+    }
+  }
+
+  /**
+   * Отправка напоминания об отправке квитанции (RUB)
+   */
+  private async sendReceiptReminder(user: User) {
+    try {
+      console.log(`🔔 Отправка напоминания о квитанции пользователю ${user.userId}`);
+
+      await this.bot.telegram.sendMessage(
+        user.userId,
+        'Что-то не работает с оплатой рублями? Проверьте, что при переводе "валюта зачисления" указана USD и у вас самая последняя версия банковского приложения (функцию добавили недавно). Также вы можете попробовать сделать перевод через веб-версию своего банка, рекомендуем: Т-банк, Альфа Банк, Сбербанк. Либо напишите ассистенту!',
+        Markup.inlineKeyboard([
+          [Markup.button.url('📨 Написать ассистенту', 'https://t.me/vetalsmirnov')]
+        ])
+      );
+
+      // Отмечаем что напоминание отправлено
+      const userRepository = AppDataSource.getRepository(User);
+      user.receiptReminderSent = true;
+      await userRepository.save(user);
+
+      console.log(`✅ Напоминание о квитанции отправлено пользователю ${user.userId}`);
+    } catch (error) {
+      console.error(`❌ Ошибка отправки напоминания о квитанции пользователю ${user.userId}:`, error);
     }
   }
 

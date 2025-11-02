@@ -433,6 +433,9 @@ bot.action('pay_rub', async (ctx) => {
   await updateUserStep(userService, userId, 'waiting_receipt');
   await setUserCurrency(userService, userId, 'RUB');
 
+  // Отмечаем время начала ожидания квитанции
+  await userService.markWaitingForReceipt(userId);
+
   // Форматируем номер карты для отображения
   const formattedCard = config.cardNumber.replace(/(\d{4})(?=\d)/g, '$1 ');
 

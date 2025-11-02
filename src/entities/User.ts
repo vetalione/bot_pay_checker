@@ -39,6 +39,12 @@ export class User {
   @Column({ type: 'boolean', default: false })
   paymentReminderSent: boolean;
 
+  @Column({ type: 'timestamp', nullable: true })
+  waitingReceiptSince?: Date;
+
+  @Column({ type: 'boolean', default: false })
+  receiptReminderSent: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

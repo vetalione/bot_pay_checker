@@ -73,6 +73,16 @@ export class UserService {
   }
 
   /**
+   * Отметить что пользователь выбрал валюту и ожидает отправки квитанции
+   */
+  async markWaitingForReceipt(userId: number): Promise<void> {
+    await this.userRepository.update({ userId }, {
+      waitingReceiptSince: new Date(),
+      receiptReminderSent: false
+    });
+  }
+
+  /**
    * Отметить пользователя как оплатившего
    */
   async markAsPaid(userId: number): Promise<void> {
