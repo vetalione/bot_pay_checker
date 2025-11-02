@@ -68,12 +68,35 @@ bot.start(async (ctx) => {
   await trackUserAction(userService, ctx, 'start', 'start');
   await updateUserStep(userService, userId, 'start');
 
+  // File IDs изображений
+  const imageFileIds = [
+    'AgACAgIAAxkDAAIDJmkHFhIsqPMEsshtOCDVTIez7RyPAAKL9zEbKfU5SCLJ-k5Vz_DFAQADAgADeQADNgQ',
+    'AgACAgIAAxkDAAIDJ2kHFhPEwRiHjjGpV_gYmDI_1btJAAKM9zEbKfU5SKpHP2ukwp9iAQADAgADeQADNgQ',
+    'AgACAgIAAxkDAAIDKGkHFhRu1ME-YXMrlXMyydmWrGl1AAKN9zEbKfU5SJuPcNoG8Di2AQADAgADeQADNgQ',
+    'AgACAgIAAxkDAAIDKWkHFhXdZL3l_d8BWa_iIqZU677FAAKO9zEbKfU5SHMDo9TvSvz4AQADAgADeQADNgQ',
+    'AgACAgIAAxkDAAIDKmkHFhdMGoeiMtDKPMd_l8hh-hvTAAKP9zEbKfU5SBFloDZKfuT7AQADAgADeQADNgQ',
+    'AgACAgIAAxkDAAIDK2kHFhgYD_wK9_ERk3Bo1tgLOu0uAAKQ9zEbKfU5SGBbaXWOlrnAAQADAgADeQADNgQ',
+    'AgACAgIAAxkDAAIDLGkHFhpWJGLX-U5BimAQEXvzDJlWAAKR9zEbKfU5SF_EoRtiz2oCAQADAgADeQADNgQ'
+  ];
+
+  // Отправляем медиа группу (7 фото)
+  await ctx.replyWithMediaGroup(
+    imageFileIds.map((fileId) => ({
+      type: 'photo',
+      media: fileId
+    }))
+  );
+
+  // Отправляем текст с кнопкой
   await ctx.reply(
-    'Привет! Сейчас я расскажу тебе как я научилась снимать рилс которые приводят мне по 100 новых подписчиков и по 9 звонков с запросом на мои услуги каждый день. Ко мне обращаются топы и комментируют миллионники. Хочешь узнать подойдет ли мой метод тебе тоже?',
+    '👋 Привет!\n' +
+    'Сейчас я покажу тебе, как я научилась снимать Reels, которые приводят сотни целевых подписчиков каждый день и генерируют по 9+ заявок на мои услуги. По своей системе я получаю клиентов-топов и внимание аккаунтов-миллионников.\n\n' +
+    'И самое главное - ты сможешь понять, подойдёт ли мой метод именно тебе, и как адаптировать его под твою нишу и личность.\n\n' +
+    'Готов(а) увидеть, за счёт чего мои Reels работают как магнит на аудиторию и клиентов - и как это повторить?',
     {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '� Хочу!', callback_data: 'want_more' }]
+          [{ text: '👇 Поехали!', callback_data: 'want_more' }]
         ]
       }
     }
