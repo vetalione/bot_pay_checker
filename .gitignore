@@ -17,3 +17,8 @@ dist/
 *.avi
 *.AVI
 videos/
+
+# Telethon session files
+*.session
+*.session-journal
+channel_sync_session*
