@@ -4,6 +4,7 @@ import { User } from './entities/User';
 import { UserAction } from './entities/UserAction';
 import { PaymentStats } from './entities/PaymentStats';
 import { CurrentSteps } from './entities/CurrentSteps';
+import { Friend } from './entity/Friend';
 
 // Получаем DATABASE_URL из переменных окружения
 // Для Railway это будет автоматически
@@ -33,7 +34,7 @@ export const AppDataSource = new DataSource({
   database: dbConfig.database,
   synchronize: true, // Автоматически создает таблицы (для production лучше использовать migrations)
   logging: process.env.NODE_ENV !== 'production' ? ['error', 'warn', 'schema'] : ['error'],
-  entities: [User, UserAction, PaymentStats, CurrentSteps],
+  entities: [User, UserAction, PaymentStats, CurrentSteps, Friend],
   subscribers: [],
   migrations: [],
   // Настройки для стабильного соединения с Railway

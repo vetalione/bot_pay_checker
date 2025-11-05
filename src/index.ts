@@ -10,6 +10,7 @@ import { UserService } from './userService';
 import { trackUserAction, updateUserStep, setUserCurrency, markUserAsPaid } from './dbHelpers';
 import { StatsService } from './statsService';
 import { ReminderService } from './reminderService';
+import { ChannelSyncService } from './services/channelSyncService';
 
 dotenv.config();
 
@@ -177,6 +178,30 @@ bot.command('stats', async (ctx) => {
     '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
 
   await ctx.reply(message, { parse_mode: 'HTML' });
+});
+
+// Команда /sync_channel для синхронизации участников канала
+bot.command('sync_channel', async (ctx) => {
+  const userId = ctx.from.id;
+  
+  // Проверяем что это админ
+  if (userId !== 278263484) {
+    await ctx.reply('У вас нет доступа к этой команде.');
+    return;
+  }
+
+  try {
+    await ctx.reply('🔄 Начинаю синхронизацию участников канала...');
+    
+    const channelSyncService = new ChannelSyncService(bot);
+    const result = await channelSyncService.syncChannelMembers(config.channelId);
+    
+    const report = channelSyncService.formatSyncReport(result);
+    await ctx.reply(report, { parse_mode: 'HTML' });
+  } catch (error) {
+    console.error('❌ Ошибка при синхронизации канала:', error);
+    await ctx.reply('❌ Произошла ошибка при синхронизации канала. Проверьте логи.');
+  }
 });
 
 // Функция отправки видео
@@ -1003,6 +1028,7 @@ bot.catch((err, ctx) => {
 // Запуск бота с инициализацией БД
 const PORT = process.env.PORT || 3000;
 let reminderService: ReminderService;
+let channelSyncInterval: NodeJS.Timeout | null = null;
 
 async function startBot() {
   try {
@@ -1024,7 +1050,41 @@ async function startBot() {
     reminderService.start();
     console.log('✅ ReminderService запущен');
 
-    // 5. Запускаем бота
+    // 5. Запускаем автоматическую синхронизацию канала каждые 6 часов
+    const channelSyncService = new ChannelSyncService(bot);
+    
+    // Первая синхронизация сразу при запуске
+    console.log('🔄 Запуск начальной синхронизации канала...');
+    try {
+      const initialResult = await channelSyncService.syncChannelMembers(config.channelId);
+      console.log('✅ Начальная синхронизация завершена:', {
+        totalMembers: initialResult.totalMembers,
+        markedAsPaid: initialResult.markedAsPaid,
+        newFriends: initialResult.newFriends,
+      });
+    } catch (error) {
+      console.error('❌ Ошибка начальной синхронизации:', error);
+    }
+
+    // Затем каждые 6 часов
+    const SYNC_INTERVAL_HOURS = 6;
+    channelSyncInterval = setInterval(async () => {
+      console.log('🔄 Автоматическая синхронизация канала...');
+      try {
+        const result = await channelSyncService.syncChannelMembers(config.channelId);
+        console.log('✅ Синхронизация завершена:', {
+          totalMembers: result.totalMembers,
+          markedAsPaid: result.markedAsPaid,
+          newFriends: result.newFriends,
+        });
+      } catch (error) {
+        console.error('❌ Ошибка автоматической синхронизации:', error);
+      }
+    }, SYNC_INTERVAL_HOURS * 60 * 60 * 1000); // 6 часов в миллисекундах
+    
+    console.log(`✅ Автоматическая синхронизация канала настроена (каждые ${SYNC_INTERVAL_HOURS}ч)`);
+
+    // 6. Запускаем бота
     await bot.launch({
       webhook: process.env.NODE_ENV === 'production' ? {
         domain: process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost',
@@ -1047,10 +1107,12 @@ startBot();
 // Graceful shutdown
 process.once('SIGINT', () => {
   if (reminderService) reminderService.stop();
+  if (channelSyncInterval) clearInterval(channelSyncInterval);
   bot.stop('SIGINT');
 });
 process.once('SIGTERM', () => {
   if (reminderService) reminderService.stop();
+  if (channelSyncInterval) clearInterval(channelSyncInterval);
   bot.stop('SIGTERM');
 });
 
