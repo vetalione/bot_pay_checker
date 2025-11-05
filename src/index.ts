@@ -507,6 +507,11 @@ bot.action('pay_rub_tribute', async (ctx) => {
   // ✅ ОТСЛЕЖИВАНИЕ: Записываем клик в БД
   await trackUserAction(userService, ctx, 'choose_rub_tribute', 'payment_choice');
   
+  // ✅ ОБНОВЛЯЕМ пользователя: переводим в waiting_receipt и сохраняем валюту
+  await userService.updateUserStep(userId, 'waiting_receipt');
+  await userService.setUserCurrency(userId, 'RUB');
+  await userService.markWaitingForReceipt(userId);
+  
   // Отправляем сообщение с URL-кнопкой Tribute
   await ctx.reply(
     '💵 Отлично! Нажмите на кнопку ниже и у вас откроется окно оплаты, где вы получите доступ в канал с платными материалами и наш чат автоматически.\n\n' +
@@ -517,7 +522,7 @@ bot.action('pay_rub_tribute', async (ctx) => {
     ])
   );
   
-  console.log(`✅ User ${userId} clicked RUB Tribute button - tracked in DB`);
+  console.log(`✅ User ${userId} clicked RUB Tribute button - moved to waiting_receipt`);
 });
 
 // Обработка нажатия кнопки "Иностранные карты" (Telegram Tribute)
@@ -529,6 +534,12 @@ bot.action('pay_eur_tribute', async (ctx) => {
   // ✅ ОТСЛЕЖИВАНИЕ: Записываем клик в БД
   await trackUserAction(userService, ctx, 'choose_eur_tribute', 'payment_choice');
   
+  // ✅ ОБНОВЛЯЕМ пользователя: переводим в waiting_receipt
+  // Для EUR используем RUB как валюту в БД (т.к. это тоже Tribute)
+  await userService.updateUserStep(userId, 'waiting_receipt');
+  await userService.setUserCurrency(userId, 'RUB'); // EUR тоже трекаем как RUB (Tribute)
+  await userService.markWaitingForReceipt(userId);
+  
   // Отправляем сообщение с URL-кнопкой Tribute
   await ctx.reply(
     '💳 Отлично! Нажмите на кнопку ниже и у вас откроется окно оплаты, где вы получите доступ в канал с платными материалами и наш чат автоматически.\n\n' +
@@ -539,7 +550,7 @@ bot.action('pay_eur_tribute', async (ctx) => {
     ])
   );
   
-  console.log(`✅ User ${userId} clicked EUR Tribute button - tracked in DB`);
+  console.log(`✅ User ${userId} clicked EUR Tribute button - moved to waiting_receipt`);
 });
 
 // ═══════════════════════════════════════════════════════════════
