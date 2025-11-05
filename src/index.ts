@@ -253,7 +253,8 @@ async function showPaymentButton(ctx: Context) {
     {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '💵 Оплатить рублями (2000 ₽)', callback_data: 'pay_rub' }],
+          [{ text: '💵 Оплатить рублями (2000 ₽)', url: 'https://t.me/tribute/app?startapp=sF8Z' }],
+          [{ text: '💳 Иностранные карты (22€)', url: 'https://t.me/tribute/app?startapp=sFe6' }],
           [{ text: '💴 Оплатить гривнами (1050 ₴)', callback_data: 'pay_uah' }]
         ]
       }
@@ -439,7 +440,8 @@ bot.action('get_advantage', async (ctx) => {
     {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '💵 Оплатить рублями (2000 ₽)', callback_data: 'pay_rub' }],
+          [{ text: '💵 Оплатить рублями (2000 ₽)', url: 'https://t.me/tribute/app?startapp=sF8Z' }],
+          [{ text: '💳 Иностранные карты (22€)', url: 'https://t.me/tribute/app?startapp=sFe6' }],
           [{ text: '💴 Оплатить гривнами (1050 ₴)', callback_data: 'pay_uah' }]
         ]
       }
@@ -477,7 +479,8 @@ bot.action('video1_skip_to_payment', async (ctx) => {
     {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '💵 Оплатить рублями (2000 ₽)', callback_data: 'pay_rub' }],
+          [{ text: '💵 Оплатить рублями (2000 ₽)', url: 'https://t.me/tribute/app?startapp=sF8Z' }],
+          [{ text: '💳 Иностранные карты (22€)', url: 'https://t.me/tribute/app?startapp=sFe6' }],
           [{ text: '💴 Оплатить гривнами (1050 ₴)', callback_data: 'pay_uah' }]
         ]
       }
@@ -485,6 +488,11 @@ bot.action('video1_skip_to_payment', async (ctx) => {
   );
 });
 
+// ═══════════════════════════════════════════════════════════════
+// СТАРЫЙ обработчик "Оплатить рублями" - ЗАКОММЕНТИРОВАН
+// Теперь используется прямая ссылка на Telegram Tribute
+// ═══════════════════════════════════════════════════════════════
+/*
 // Обработка нажатия кнопки "Оплатить рублями"
 bot.action('pay_rub', async (ctx) => {
   const userId = ctx.from.id;
@@ -540,6 +548,7 @@ bot.action('pay_rub', async (ctx) => {
     ])
   );
 });
+*/
 
 // Обработка нажатия кнопки "Оплатить гривнами"
 bot.action('pay_uah', async (ctx) => {
