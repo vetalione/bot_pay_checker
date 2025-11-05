@@ -52,6 +52,25 @@ const config = {
 // Инициализация бота
 const bot = new Telegraf(config.botToken);
 
+// Middleware: Игнорировать сообщения из групп и каналов
+bot.use(async (ctx, next) => {
+  // Проверяем тип чата
+  const chatType = ctx.chat?.type;
+  
+  // Если это группа, супергруппа или канал - игнорируем
+  if (chatType === 'group' || chatType === 'supergroup' || chatType === 'channel') {
+    logWithTimestamp('🚫 Ignored message from group/channel', {
+      chatType,
+      chatId: ctx.chat?.id,
+      messageType: ctx.message ? 'message' : ctx.callbackQuery ? 'callback' : 'unknown'
+    });
+    return; // Не вызываем next(), прерываем обработку
+  }
+  
+  // Если это приватный чат (private) - продолжаем обработку
+  return next();
+});
+
 // Команда /start
 bot.start(async (ctx) => {
   const userId = ctx.from.id;
@@ -617,9 +636,20 @@ bot.on(message('photo'), async (ctx) => {
       // Сбрасываем состояние
       userStates.delete(userId);
 
-    } catch (error) {
-      console.error('Error generating invite links:', error);
-      await ctx.reply('❌ Произошла ошибка при генерации ссылок. Пожалуйста, обратитесь в поддержку.');
+    } catch (error: any) {
+      console.error('❌ Error generating invite links:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        response: error.response?.description,
+        stack: error.stack
+      });
+      
+      await ctx.reply(
+        '❌ Произошла ошибка при генерации ссылок.\n\n' +
+        'Пожалуйста, обратитесь в поддержку: @vetalsmirnov\n\n' +
+        `Код ошибки: ${error.message || 'Неизвестная ошибка'}`
+      );
     }
   } else {
     // ЕДИНСТВЕННОЕ консолидированное сообщение при отказе
@@ -731,28 +761,49 @@ async function validateReceipt(ctx: Context): Promise<ReceiptValidationResult | 
 // Генерация invite-ссылки для канала
 async function generateInviteLink(userId: number): Promise<string> {
   try {
-    logWithTimestamp('Creating invite link', { userId, channelId: config.channelId });
+    logWithTimestamp('🔗 Creating channel invite link', { userId, channelId: config.channelId });
     
     // Проверяем, что бот является администратором канала
     try {
       const chatMember = await bot.telegram.getChatMember(config.channelId, bot.botInfo!.id);
-      logWithTimestamp('Bot status in channel', { status: chatMember.status });
+      logWithTimestamp('✅ Bot status in channel', { status: chatMember.status });
       
       if (chatMember.status !== 'administrator' && chatMember.status !== 'creator') {
-        throw new Error('Bot is not an administrator in the channel');
+        const error = new Error(`Bot is not an administrator in the channel. Current status: ${chatMember.status}`);
+        logWithTimestamp('❌ Bot lacks permissions', { status: chatMember.status, channelId: config.channelId });
+        throw error;
       }
-    } catch (checkError) {
-      logWithTimestamp('Error checking bot status', checkError);
-      throw new Error('Bot is not added to the channel or lacks permissions. Please add bot as admin to the channel.');
+      
+      // Проверяем права на создание invite ссылок
+      if (chatMember.status === 'administrator') {
+        const admin = chatMember as any;
+        logWithTimestamp('📋 Bot permissions in channel', {
+          can_invite_users: admin.can_invite_users,
+          can_manage_chat: admin.can_manage_chat
+        });
+        
+        if (admin.can_invite_users === false) {
+          throw new Error('Bot does not have permission to create invite links. Enable "Invite Users via Link" in channel admin settings.');
+        }
+      }
+      
+    } catch (checkError: any) {
+      logWithTimestamp('❌ Error checking bot status in channel', {
+        error: checkError.message,
+        channelId: config.channelId,
+        response: checkError.response?.description
+      });
+      throw new Error(`Cannot access channel: ${checkError.message}. Please add bot as admin to channel ID: ${config.channelId}`);
     }
     
     // Создаем уникальную invite-ссылку
+    logWithTimestamp('⚙️ Attempting to create invite link...', { channelId: config.channelId });
     const inviteLink = await bot.telegram.createChatInviteLink(config.channelId, {
       member_limit: 1, // Только для одного пользователя
       expire_date: Math.floor(Date.now() / 1000) + 86400 // 24 часа
     });
 
-    logWithTimestamp('Generated invite link', { userId, link: inviteLink.invite_link });
+    logWithTimestamp('✅ Generated channel invite link', { userId, link: inviteLink.invite_link });
     
     return inviteLink.invite_link;
   } catch (error) {
@@ -764,32 +815,57 @@ async function generateInviteLink(userId: number): Promise<string> {
 // Генерация invite-ссылки для чата
 async function generateChatInviteLink(userId: number): Promise<string> {
   try {
-    logWithTimestamp('Creating chat invite link', { userId, chatId: config.chatId });
+    logWithTimestamp('🔗 Creating chat invite link', { userId, chatId: config.chatId });
     
     // Проверяем, что бот является администратором чата
     try {
       const chatMember = await bot.telegram.getChatMember(config.chatId, bot.botInfo!.id);
-      logWithTimestamp('Bot status in chat', { status: chatMember.status });
+      logWithTimestamp('✅ Bot status in chat', { status: chatMember.status });
       
       if (chatMember.status !== 'administrator' && chatMember.status !== 'creator') {
-        throw new Error('Bot is not an administrator in the chat');
+        const error = new Error(`Bot is not an administrator in the chat. Current status: ${chatMember.status}`);
+        logWithTimestamp('❌ Bot lacks permissions in chat', { status: chatMember.status, chatId: config.chatId });
+        throw error;
       }
-    } catch (checkError) {
-      logWithTimestamp('Error checking bot status in chat', checkError);
-      throw new Error('Bot is not added to the chat or lacks permissions. Please add bot as admin to the chat.');
+      
+      // Проверяем права на создание invite ссылок
+      if (chatMember.status === 'administrator') {
+        const admin = chatMember as any;
+        logWithTimestamp('📋 Bot permissions in chat', {
+          can_invite_users: admin.can_invite_users,
+          can_manage_chat: admin.can_manage_chat
+        });
+        
+        if (admin.can_invite_users === false) {
+          throw new Error('Bot does not have permission to create invite links. Enable "Invite Users via Link" in chat admin settings.');
+        }
+      }
+      
+    } catch (checkError: any) {
+      logWithTimestamp('❌ Error checking bot status in chat', {
+        error: checkError.message,
+        chatId: config.chatId,
+        response: checkError.response?.description
+      });
+      throw new Error(`Cannot access chat: ${checkError.message}. Please add bot as admin to chat ID: ${config.chatId}`);
     }
     
     // Создаем уникальную invite-ссылку для чата
+    logWithTimestamp('⚙️ Attempting to create chat invite link...', { chatId: config.chatId });
     const inviteLink = await bot.telegram.createChatInviteLink(config.chatId, {
       member_limit: 1, // Только для одного пользователя
       expire_date: Math.floor(Date.now() / 1000) + 86400 // 24 часа
     });
 
-    logWithTimestamp('Generated chat invite link', { userId, link: inviteLink.invite_link });
+    logWithTimestamp('✅ Generated chat invite link', { userId, link: inviteLink.invite_link });
     
     return inviteLink.invite_link;
-  } catch (error) {
-    logWithTimestamp('Error generating chat invite link', error);
+  } catch (error: any) {
+    logWithTimestamp('❌ Error generating chat invite link', {
+      error: error.message,
+      chatId: config.chatId,
+      response: error.response?.description
+    });
     throw error;
   }
 }
