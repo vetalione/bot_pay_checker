@@ -68,10 +68,9 @@ async function sendStuckUsersMessage() {
           user.userId,
           'Ладно, ладно, я поняла! 😁 Для самых нетерпеливых вот ссылка сразу на оплату продукта без прелюдий:',
           Markup.inlineKeyboard([
-            [
-              Markup.button.callback('💵 Рубли (RUB)', 'pay_rub'),
-              Markup.button.callback('💴 Гривны (UAH)', 'pay_uah')
-            ]
+            [Markup.button.callback('💵 Оплатить рублями (2000 ₽)', 'pay_rub_tribute')],
+            [Markup.button.callback('� Иностранные карты (22€)', 'pay_eur_tribute')],
+            [Markup.button.callback('💴 Оплатить гривнами (1050 ₴)', 'pay_uah')]
           ])
         );
 
