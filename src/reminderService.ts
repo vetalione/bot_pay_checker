@@ -44,7 +44,7 @@ export class ReminderService {
   private async checkAndSendReminders() {
     try {
       await this.checkPaymentChoiceReminders();
-      await this.checkReceiptReminders();
+      // await this.checkReceiptReminders(); // УБРАНО: RUB теперь только через Tribute (автоматически)
       await this.checkVideo1Reminders();
     } catch (error) {
       console.error('❌ Ошибка в checkAndSendReminders:', error);
