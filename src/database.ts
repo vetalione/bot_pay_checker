@@ -10,9 +10,27 @@ import { CurrentSteps } from './entities/CurrentSteps';
 // Локально можно использовать: postgresql://user:password@localhost:5432/dbname
 const databaseUrl = process.env.DATABASE_URL || 'postgresql://localhost:5432/telegram_bot';
 
+// Парсим URL для получения параметров подключения
+function parseDatabaseUrl(url: string) {
+  const urlObj = new URL(url);
+  return {
+    host: urlObj.hostname,
+    port: parseInt(urlObj.port) || 5432,
+    username: urlObj.username,
+    password: urlObj.password,
+    database: urlObj.pathname.slice(1) || 'postgres', // убираем начальный слеш
+  };
+}
+
+const dbConfig = parseDatabaseUrl(databaseUrl);
+
 export const AppDataSource = new DataSource({
   type: 'postgres',
-  url: databaseUrl,
+  host: dbConfig.host,
+  port: dbConfig.port,
+  username: dbConfig.username,
+  password: dbConfig.password,
+  database: dbConfig.database,
   synchronize: true, // Автоматически создает таблицы (для production лучше использовать migrations)
   logging: process.env.NODE_ENV !== 'production' ? ['error', 'warn', 'schema'] : ['error'],
   entities: [User, UserAction, PaymentStats, CurrentSteps],
