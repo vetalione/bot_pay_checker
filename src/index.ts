@@ -253,8 +253,8 @@ async function showPaymentButton(ctx: Context) {
     {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '💵 Оплатить рублями (2000 ₽)', url: 'https://t.me/tribute/app?startapp=sF8Z' }],
-          [{ text: '💳 Иностранные карты (22€)', url: 'https://t.me/tribute/app?startapp=sFe6' }],
+          [{ text: '💵 Оплатить рублями (2000 ₽)', callback_data: 'pay_rub_tribute' }],
+          [{ text: '💳 Иностранные карты (22€)', callback_data: 'pay_eur_tribute' }],
           [{ text: '💴 Оплатить гривнами (1050 ₴)', callback_data: 'pay_uah' }]
         ]
       }
@@ -440,8 +440,8 @@ bot.action('get_advantage', async (ctx) => {
     {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '💵 Оплатить рублями (2000 ₽)', url: 'https://t.me/tribute/app?startapp=sF8Z' }],
-          [{ text: '💳 Иностранные карты (22€)', url: 'https://t.me/tribute/app?startapp=sFe6' }],
+          [{ text: '💵 Оплатить рублями (2000 ₽)', callback_data: 'pay_rub_tribute' }],
+          [{ text: '💳 Иностранные карты (22€)', callback_data: 'pay_eur_tribute' }],
           [{ text: '💴 Оплатить гривнами (1050 ₴)', callback_data: 'pay_uah' }]
         ]
       }
@@ -479,13 +479,61 @@ bot.action('video1_skip_to_payment', async (ctx) => {
     {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '💵 Оплатить рублями (2000 ₽)', url: 'https://t.me/tribute/app?startapp=sF8Z' }],
-          [{ text: '💳 Иностранные карты (22€)', url: 'https://t.me/tribute/app?startapp=sFe6' }],
+          [{ text: '💵 Оплатить рублями (2000 ₽)', callback_data: 'pay_rub_tribute' }],
+          [{ text: '💳 Иностранные карты (22€)', callback_data: 'pay_eur_tribute' }],
           [{ text: '💴 Оплатить гривнами (1050 ₴)', callback_data: 'pay_uah' }]
         ]
       }
     }
   );
+});
+
+// ═══════════════════════════════════════════════════════════════
+// ОПЛАТА ЧЕРЕЗ TELEGRAM TRIBUTE (с отслеживанием кликов)
+// ═══════════════════════════════════════════════════════════════
+
+// Обработка нажатия кнопки "Оплатить рублями" (Telegram Tribute)
+bot.action('pay_rub_tribute', async (ctx) => {
+  const userId = ctx.from.id;
+  
+  await ctx.answerCbQuery();
+  
+  // ✅ ОТСЛЕЖИВАНИЕ: Записываем клик в БД
+  await trackUserAction(userService, ctx, 'choose_rub_tribute', 'payment_choice');
+  
+  // Отправляем сообщение с URL-кнопкой Tribute
+  await ctx.reply(
+    '💵 Отлично! Нажмите на кнопку ниже и у вас откроется окно оплаты, где вы получите доступ в канал с платными материалами и наш чат автоматически.\n\n' +
+    'Подойдет карта любого российского банка, даже кредитная. Если что-то не получается нажмите "Написать ассистенту" и вам ответят в течение часа.',
+    Markup.inlineKeyboard([
+      [Markup.button.url('💳 Оплатить 2000 ₽', 'https://t.me/tribute/app?startapp=sF8Z')],
+      [Markup.button.url('📨 Написать ассистенту', 'https://t.me/vetalsmirnov')]
+    ])
+  );
+  
+  console.log(`✅ User ${userId} clicked RUB Tribute button - tracked in DB`);
+});
+
+// Обработка нажатия кнопки "Иностранные карты" (Telegram Tribute)
+bot.action('pay_eur_tribute', async (ctx) => {
+  const userId = ctx.from.id;
+  
+  await ctx.answerCbQuery();
+  
+  // ✅ ОТСЛЕЖИВАНИЕ: Записываем клик в БД
+  await trackUserAction(userService, ctx, 'choose_eur_tribute', 'payment_choice');
+  
+  // Отправляем сообщение с URL-кнопкой Tribute
+  await ctx.reply(
+    '💳 Отлично! Нажмите на кнопку ниже и у вас откроется окно оплаты, где вы получите доступ в канал с платными материалами и наш чат автоматически.\n\n' +
+    'Подойдет любая иностранная карта любой страны. Если что-то не получается нажмите "Написать ассистенту" и вам ответят в течение часа.',
+    Markup.inlineKeyboard([
+      [Markup.button.url('💳 Оплатить 22€', 'https://t.me/tribute/app?startapp=sFe6')],
+      [Markup.button.url('📨 Написать ассистенту', 'https://t.me/vetalsmirnov')]
+    ])
+  );
+  
+  console.log(`✅ User ${userId} clicked EUR Tribute button - tracked in DB`);
 });
 
 // ═══════════════════════════════════════════════════════════════
