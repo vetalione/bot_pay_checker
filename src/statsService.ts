@@ -22,6 +22,28 @@ export class StatsService {
   }
 
   /**
+   * Получить статистику по кликам на кнопки Tribute
+   */
+  async getTributeClicksStats(): Promise<{ rub: number; eur: number }> {
+    try {
+      const rubClicks = await AppDataSource.query(
+        `SELECT COUNT(DISTINCT "userId") as count FROM user_actions WHERE action = 'choose_rub_tribute'`
+      );
+      const eurClicks = await AppDataSource.query(
+        `SELECT COUNT(DISTINCT "userId") as count FROM user_actions WHERE action = 'choose_eur_tribute'`
+      );
+      
+      return {
+        rub: parseInt(rubClicks[0]?.count || '0'),
+        eur: parseInt(eurClicks[0]?.count || '0')
+      };
+    } catch (error) {
+      console.error('Ошибка получения статистики Tribute:', error);
+      return { rub: 0, eur: 0 };
+    }
+  }
+
+  /**
    * Вывести статистику в консоль
    */
   async logPaymentStats(): Promise<void> {

@@ -137,6 +137,7 @@ bot.command('stats', async (ctx) => {
   const statsService = new StatsService();
   const stats = await statsService.getPaymentStats();
   const steps = await statsService.getCurrentSteps();
+  const tributeClicks = await statsService.getTributeClicksStats();
 
   if (!stats || !steps) {
     await ctx.reply('❌ Статистика недоступна');
@@ -157,6 +158,11 @@ bot.command('stats', async (ctx) => {
     `💴 <b>Оплат в гривнах:</b> ${stats.total_uah_payments}\n` +
     `📷 <b>Отправлено "не квитанций":</b> ${stats.total_non_receipts}\n` +
     `❌ <b>Квитанций не прошедших проверку:</b> ${stats.total_failed_receipts}\n\n` +
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+    '🔘 <b>КЛИКИ НА TRIBUTE КНОПКИ</b>\n' +
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+    `💵 <b>RUB Tribute:</b> ${tributeClicks.rub} пользователей\n` +
+    `💳 <b>EUR Tribute:</b> ${tributeClicks.eur} пользователей\n\n` +
     '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
     '📈 <b>ВОРОНКА КОНВЕРСИИ</b>\n' +
     '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
