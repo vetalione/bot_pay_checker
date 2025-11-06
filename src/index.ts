@@ -472,6 +472,9 @@ bot.action('continue_watching', async (ctx) => {
   
   state.step = 'video2';
   userStates.set(userId, state);
+  
+  // Сохраняем в БД
+  await updateUserStep(userService, userId, 'video2');
 
   await ctx.reply(
     'А теперь приготовься узнать почему у меня получилось, когда другие топчутся на месте, и почему у тебя получится тоже! Посмотри это короткое видео и как будешь готов(а), нажми кнопку ниже.'
@@ -520,6 +523,9 @@ bot.action('ready_for_more', async (ctx) => {
   
   state.step = 'video3';
   userStates.set(userId, state);
+  
+  // Сохраняем в БД
+  await updateUserStep(userService, userId, 'video3');
 
   await ctx.reply(
     'Отлично, последний рывок перед сотнями заявок с рилс! В этом видео ты узнаешь про конкретный алгоритм работы который принес мне успех, и какое нечестное преимущество я тебе дам. Смотри скорее!'

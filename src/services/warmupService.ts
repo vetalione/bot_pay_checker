@@ -25,7 +25,7 @@ export class WarmupService {
         .where('user.currentStep = :step', { step: 'start' })
         .andWhere('user.hasPaid = false')
         .andWhere('user.warmupStartSent = false')
-        .andWhere('user.lastActionAt < NOW() - INTERVAL \'5 minutes\'')
+        .andWhere('user.lastActivityAt < NOW() - INTERVAL \'5 minutes\'')
         .getMany();
 
       // Находим пользователей застрявших на video1 (10 минут)
@@ -34,7 +34,7 @@ export class WarmupService {
         .where('user.currentStep = :step', { step: 'video1' })
         .andWhere('user.hasPaid = false')
         .andWhere('user.warmupVideo1Sent = false')
-        .andWhere('user.lastActionAt < NOW() - INTERVAL \'10 minutes\'')
+        .andWhere('user.lastActivityAt < NOW() - INTERVAL \'10 minutes\'')
         .getMany();
 
       console.log(`🔥 Warmup: найдено ${startUsers.length} на start, ${video1Users.length} на video1`);
@@ -72,18 +72,19 @@ export class WarmupService {
    * Используется для первого запуска, потом работает автодогрев
    */
   async sendBroadcastToStuck(): Promise<{ total: number; sent: number; failed: number }> {
-    const userRepo = AppDataSource.getRepository(User);
     let sent = 0;
     let failed = 0;
 
-    // Находим ВСЕХ застрявших на start и video1 (без учета времени и флагов)
-    const stuckUsers = await userRepo
-      .createQueryBuilder('user')
-      .where('user.currentStep IN (:...steps)', { steps: ['start', 'video1'] })
-      .andWhere('user.hasPaid = false')
-      .getMany();
+    // Используем прямой SQL запрос для надёжности
+    const stuckUsers = await AppDataSource.query(`
+      SELECT * FROM users 
+      WHERE "currentStep" IN ('start', 'video1') 
+      AND "hasPaid" = false
+    `);
 
     console.log(`📨 Начинаем разовую рассылку warmup для ${stuckUsers.length} пользователей...`);
+
+    const userRepo = AppDataSource.getRepository(User);
 
     for (const user of stuckUsers) {
       try {
