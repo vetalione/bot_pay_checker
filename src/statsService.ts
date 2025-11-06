@@ -2,6 +2,24 @@ import { AppDataSource } from './database';
 import { PaymentStats } from './entities/PaymentStats';
 import { CurrentSteps } from './entities/CurrentSteps';
 
+// Интерфейс для snapshot статистики
+interface StatsSnapshot {
+  timestamp: Date;
+  totalUsers: number;
+  successfulPayments: number;
+  stuckAtStart: number;
+  stuckAtVideo1: number;
+  stuckAtVideo2: number;
+  stuckAtVideo3: number;
+  stuckAtPaymentChoice: number;
+  chosePaymentNoReceipt: number;
+  receiptRejected: number;
+  tributeClicksTotal: number;
+}
+
+// Хранилище последнего snapshot (в памяти, для простоты)
+let lastSnapshot: StatsSnapshot | null = null;
+
 export class StatsService {
   /**
    * Получить агрегированную статистику по платежам
@@ -100,6 +118,140 @@ export class StatsService {
         lastChoiceRub: 0,
         lastChoiceEur: 0,
       };
+    }
+  }
+
+  /**
+   * Получить количество отправленных напоминаний по категориям
+   */
+  async getReminderStats(): Promise<{
+    video1: number;
+    paymentChoice: number;
+    receipt: number;
+  }> {
+    try {
+      const video1Reminders = await AppDataSource.query(
+        `SELECT COUNT(*) as count FROM users WHERE "video1ReminderSent" = true`
+      );
+      const paymentChoiceReminders = await AppDataSource.query(
+        `SELECT COUNT(*) as count FROM users WHERE "paymentReminderSent" = true`
+      );
+      const receiptReminders = await AppDataSource.query(
+        `SELECT COUNT(*) as count FROM users WHERE "receiptReminderSent" = true`
+      );
+
+      return {
+        video1: parseInt(video1Reminders[0]?.count || '0'),
+        paymentChoice: parseInt(paymentChoiceReminders[0]?.count || '0'),
+        receipt: parseInt(receiptReminders[0]?.count || '0'),
+      };
+    } catch (error) {
+      console.error('Ошибка получения статистики напоминаний:', error);
+      return { video1: 0, paymentChoice: 0, receipt: 0 };
+    }
+  }
+
+  /**
+   * Создать snapshot текущей статистики для отслеживания изменений
+   */
+  async createSnapshot(): Promise<void> {
+    try {
+      const stats = await this.getPaymentStats();
+      const steps = await this.getCurrentSteps();
+      const tributeClicks = await this.getTributeClicksStats();
+
+      if (!stats || !steps) {
+        return;
+      }
+
+      lastSnapshot = {
+        timestamp: new Date(),
+        totalUsers: stats.total_users_started,
+        successfulPayments: stats.total_successful_payments,
+        stuckAtStart: steps.stuck_at_start,
+        stuckAtVideo1: steps.stuck_at_video1,
+        stuckAtVideo2: steps.stuck_at_video2,
+        stuckAtVideo3: steps.stuck_at_video3,
+        stuckAtPaymentChoice: steps.stuck_at_payment_choice,
+        chosePaymentNoReceipt: steps.chose_payment_no_receipt,
+        receiptRejected: steps.receipt_rejected,
+        tributeClicksTotal: tributeClicks.total,
+      };
+    } catch (error) {
+      console.error('Ошибка создания snapshot:', error);
+    }
+  }
+
+  /**
+   * Получить изменения с момента последнего snapshot
+   */
+  async getDelta(): Promise<{
+    hasChanges: boolean;
+    timeSinceLastCheck: string;
+    changes: {
+      newUsers: number;
+      newPayments: number;
+      stuckAtStart: number;
+      stuckAtVideo1: number;
+      stuckAtVideo2: number;
+      stuckAtVideo3: number;
+      stuckAtPaymentChoice: number;
+      chosePaymentNoReceipt: number;
+      receiptRejected: number;
+      newTributeClicks: number;
+    };
+  } | null> {
+    if (!lastSnapshot) {
+      return null;
+    }
+
+    try {
+      const stats = await this.getPaymentStats();
+      const steps = await this.getCurrentSteps();
+      const tributeClicks = await this.getTributeClicksStats();
+
+      if (!stats || !steps) {
+        return null;
+      }
+
+      // Вычисляем время с момента последней проверки
+      const now = new Date();
+      const diffMs = now.getTime() - lastSnapshot.timestamp.getTime();
+      const diffMinutes = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMinutes / 60);
+      const remainingMinutes = diffMinutes % 60;
+
+      let timeSinceLastCheck = '';
+      if (diffHours > 0) {
+        timeSinceLastCheck = `${diffHours}ч ${remainingMinutes}м`;
+      } else {
+        timeSinceLastCheck = `${diffMinutes}м`;
+      }
+
+      const changes = {
+        newUsers: stats.total_users_started - lastSnapshot.totalUsers,
+        newPayments: stats.total_successful_payments - lastSnapshot.successfulPayments,
+        stuckAtStart: steps.stuck_at_start - lastSnapshot.stuckAtStart,
+        stuckAtVideo1: steps.stuck_at_video1 - lastSnapshot.stuckAtVideo1,
+        stuckAtVideo2: steps.stuck_at_video2 - lastSnapshot.stuckAtVideo2,
+        stuckAtVideo3: steps.stuck_at_video3 - lastSnapshot.stuckAtVideo3,
+        stuckAtPaymentChoice: steps.stuck_at_payment_choice - lastSnapshot.stuckAtPaymentChoice,
+        chosePaymentNoReceipt: steps.chose_payment_no_receipt - lastSnapshot.chosePaymentNoReceipt,
+        receiptRejected: steps.receipt_rejected - lastSnapshot.receiptRejected,
+        newTributeClicks: tributeClicks.total - lastSnapshot.tributeClicksTotal,
+      };
+
+      // Проверяем есть ли хоть какие-то изменения
+      const hasChanges = Object.values(changes).some(val => val !== 0);
+
+      return {
+        hasChanges,
+        timeSinceLastCheck,
+        changes,
+      };
+    } catch (error) {
+      console.error('Ошибка вычисления delta:', error);
+      return null;
     }
   }
 
