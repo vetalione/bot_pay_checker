@@ -178,6 +178,12 @@ bot.command('stats', async (ctx) => {
     if (delta.changes.newTributeClicks !== 0) {
       message += `💳 Кликов на Tribute: ${delta.changes.newTributeClicks > 0 ? '+' : ''}${delta.changes.newTributeClicks}\n`;
     }
+    if (delta.changes.newWarmupStartSent !== 0) {
+      message += `🔥 Warmup Start отправлено: ${delta.changes.newWarmupStartSent > 0 ? '+' : ''}${delta.changes.newWarmupStartSent}\n`;
+    }
+    if (delta.changes.newWarmupVideo1Sent !== 0) {
+      message += `🔥 Warmup Video1 отправлено: ${delta.changes.newWarmupVideo1Sent > 0 ? '+' : ''}${delta.changes.newWarmupVideo1Sent}\n`;
+    }
     
     // Изменения в воронке
     const funnelChanges: string[] = [];
@@ -228,9 +234,11 @@ bot.command('stats', async (ctx) => {
     '📈 <b>ВОРОНКА КОНВЕРСИИ</b>\n' +
     '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
     `👥 <b>Начали:</b> ${steps.total_users_started}\n` +
-    `🚫 <b>Застряли на старте:</b> ${steps.stuck_at_start}\n` +
+    `🚫 <b>Застряли на старте:</b> ${steps.stuck_at_start}` +
+    (reminders.warmupStart > 0 ? ` (🔥 ${reminders.warmupStart})` : '') + `\n` +
     `📹 <b>Застряли на видео 1:</b> ${steps.stuck_at_video1}` + 
-    (reminders.video1 > 0 ? ` (📨 ${reminders.video1})` : '') + `\n` +
+    (reminders.video1 > 0 ? ` (📨 ${reminders.video1})` : '') +
+    (reminders.warmupVideo1 > 0 ? ` (🔥 ${reminders.warmupVideo1})` : '') + `\n` +
     `📹 <b>Застряли на видео 2:</b> ${steps.stuck_at_video2}\n` +
     `📹 <b>Застряли на видео 3:</b> ${steps.stuck_at_video3}\n` +
     `💳 <b>Застряли на выборе оплаты:</b> ${steps.stuck_at_payment_choice}` +
@@ -244,6 +252,38 @@ bot.command('stats', async (ctx) => {
 
   // Создаём snapshot для следующей проверки
   await statsService.createSnapshot();
+});
+
+// Команда /warmup_broadcast для разовой рассылки догрева всем застрявшим
+bot.command('warmup_broadcast', async (ctx) => {
+  const userId = ctx.from.id;
+  
+  // Проверяем что это админ
+  if (userId !== 278263484) {
+    await ctx.reply('У вас нет доступа к этой команде.');
+    return;
+  }
+
+  try {
+    await ctx.reply('🔥 Начинаю разовую рассылку warmup для всех застрявших на start и video1...');
+    
+    const { WarmupService } = await import('./services/warmupService');
+    const warmupService = new WarmupService(bot);
+    const result = await warmupService.sendBroadcastToStuck();
+    
+    const report = 
+      '🔥 <b>РЕЗУЛЬТАТЫ WARMUP РАССЫЛКИ</b>\n' +
+      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+      `👥 <b>Всего пользователей:</b> ${result.total}\n` +
+      `✅ <b>Отправлено:</b> ${result.sent}\n` +
+      `❌ <b>Ошибок:</b> ${result.failed}\n\n` +
+      `📊 Теперь используй /stats чтобы отследить как они продвинутся по воронке!`;
+    
+    await ctx.reply(report, { parse_mode: 'HTML' });
+  } catch (error) {
+    console.error('❌ Ошибка при warmup рассылке:', error);
+    await ctx.reply('❌ Произошла ошибка при рассылке. Проверьте логи.');
+  }
 });
 
 // Команда /sync_channel для синхронизации участников канала
@@ -1115,6 +1155,19 @@ async function startBot() {
     reminderService = new ReminderService(bot);
     reminderService.start();
     console.log('✅ ReminderService запущен');
+
+    // 4.5. Запускаем сервис догрева (warmup) каждые 2 минуты
+    const { WarmupService } = await import('./services/warmupService');
+    const warmupService = new WarmupService(bot);
+    
+    // Первая проверка сразу
+    await warmupService.sendWarmupReminders();
+    
+    // Затем каждые 2 минуты
+    setInterval(async () => {
+      await warmupService.sendWarmupReminders();
+    }, 2 * 60 * 1000); // 2 минуты
+    console.log('✅ WarmupService запущен (проверка каждые 2 минуты)');
 
     // 5. Запускаем автоматическую синхронизацию канала каждые 6 часов
     const channelSyncService = new ChannelSyncService(bot);

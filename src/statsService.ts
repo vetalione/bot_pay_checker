@@ -15,6 +15,8 @@ interface StatsSnapshot {
   chosePaymentNoReceipt: number;
   receiptRejected: number;
   tributeClicksTotal: number;
+  warmupStartSent: number;
+  warmupVideo1Sent: number;
 }
 
 // Хранилище последнего snapshot (в памяти, для простоты)
@@ -128,6 +130,8 @@ export class StatsService {
     video1: number;
     paymentChoice: number;
     receipt: number;
+    warmupStart: number;
+    warmupVideo1: number;
   }> {
     try {
       const video1Reminders = await AppDataSource.query(
@@ -139,15 +143,23 @@ export class StatsService {
       const receiptReminders = await AppDataSource.query(
         `SELECT COUNT(*) as count FROM users WHERE "receiptReminderSent" = true`
       );
+      const warmupStartCount = await AppDataSource.query(
+        `SELECT COUNT(*) as count FROM users WHERE "warmupStartSent" = true`
+      );
+      const warmupVideo1Count = await AppDataSource.query(
+        `SELECT COUNT(*) as count FROM users WHERE "warmupVideo1Sent" = true`
+      );
 
       return {
         video1: parseInt(video1Reminders[0]?.count || '0'),
         paymentChoice: parseInt(paymentChoiceReminders[0]?.count || '0'),
         receipt: parseInt(receiptReminders[0]?.count || '0'),
+        warmupStart: parseInt(warmupStartCount[0]?.count || '0'),
+        warmupVideo1: parseInt(warmupVideo1Count[0]?.count || '0'),
       };
     } catch (error) {
       console.error('Ошибка получения статистики напоминаний:', error);
-      return { video1: 0, paymentChoice: 0, receipt: 0 };
+      return { video1: 0, paymentChoice: 0, receipt: 0, warmupStart: 0, warmupVideo1: 0 };
     }
   }
 
@@ -159,6 +171,7 @@ export class StatsService {
       const stats = await this.getPaymentStats();
       const steps = await this.getCurrentSteps();
       const tributeClicks = await this.getTributeClicksStats();
+      const reminders = await this.getReminderStats();
 
       if (!stats || !steps) {
         return;
@@ -176,6 +189,8 @@ export class StatsService {
         chosePaymentNoReceipt: steps.chose_payment_no_receipt,
         receiptRejected: steps.receipt_rejected,
         tributeClicksTotal: tributeClicks.total,
+        warmupStartSent: reminders.warmupStart,
+        warmupVideo1Sent: reminders.warmupVideo1,
       };
     } catch (error) {
       console.error('Ошибка создания snapshot:', error);
@@ -199,6 +214,8 @@ export class StatsService {
       chosePaymentNoReceipt: number;
       receiptRejected: number;
       newTributeClicks: number;
+      newWarmupStartSent: number;
+      newWarmupVideo1Sent: number;
     };
   } | null> {
     if (!lastSnapshot) {
@@ -209,6 +226,7 @@ export class StatsService {
       const stats = await this.getPaymentStats();
       const steps = await this.getCurrentSteps();
       const tributeClicks = await this.getTributeClicksStats();
+      const reminders = await this.getReminderStats();
 
       if (!stats || !steps) {
         return null;
@@ -239,6 +257,8 @@ export class StatsService {
         chosePaymentNoReceipt: steps.chose_payment_no_receipt - lastSnapshot.chosePaymentNoReceipt,
         receiptRejected: steps.receipt_rejected - lastSnapshot.receiptRejected,
         newTributeClicks: tributeClicks.total - lastSnapshot.tributeClicksTotal,
+        newWarmupStartSent: reminders.warmupStart - lastSnapshot.warmupStartSent,
+        newWarmupVideo1Sent: reminders.warmupVideo1 - lastSnapshot.warmupVideo1Sent,
       };
 
       // Проверяем есть ли хоть какие-то изменения

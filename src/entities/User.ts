@@ -51,6 +51,12 @@ export class User {
   @Column({ type: 'boolean', default: false })
   video1ReminderSent: boolean;
 
+  @Column({ type: 'boolean', default: false })
+  warmupStartSent: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  warmupVideo1Sent: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 
