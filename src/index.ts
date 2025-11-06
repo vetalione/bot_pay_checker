@@ -5,8 +5,9 @@ import * as fs from 'fs';
 import { formatCardNumber, logWithTimestamp, delay } from './utils';
 import { MESSAGES, BUTTON_LABELS, VIDEO_CAPTIONS, TIMING } from './constants';
 import { validateReceiptWithGemini, ReceiptValidationResult } from './receiptValidator';
-import { initializeDatabase } from './database';
+import { initializeDatabase, AppDataSource } from './database';
 import { UserService } from './userService';
+import { User } from './entities/User';
 import { trackUserAction, updateUserStep, setUserCurrency, markUserAsPaid } from './dbHelpers';
 import { StatsService } from './statsService';
 import { ReminderService } from './reminderService';
@@ -307,6 +308,78 @@ bot.command('sync_channel', async (ctx) => {
   } catch (error) {
     console.error('❌ Ошибка при синхронизации канала:', error);
     await ctx.reply('❌ Произошла ошибка при синхронизации канала. Проверьте логи.');
+  }
+});
+
+// Команда ручной пометки пользователя как оплатившего (только для админов)
+// Использование: /mark_paid @username или /mark_paid 123456789
+bot.command('mark_paid', async (ctx) => {
+  const userId = ctx.from.id;
+  
+  // Проверяем что это админ
+  if (userId !== 278263484) {
+    await ctx.reply('У вас нет доступа к этой команде.');
+    return;
+  }
+
+  try {
+    const args = ctx.message.text.split(' ').slice(1);
+    
+    if (args.length === 0) {
+      await ctx.reply(
+        '❌ Укажите username или userId пользователя.\n\n' +
+        '📝 Примеры:\n' +
+        '/mark_paid @Nadin_bagrova\n' +
+        '/mark_paid 438820947'
+      );
+      return;
+    }
+
+    const identifier = args[0].replace('@', '');
+    let targetUser;
+
+    // Проверяем это userId или username
+    if (/^\d+$/.test(identifier)) {
+      // Это userId
+      const targetUserId = parseInt(identifier);
+      const userRepository = AppDataSource.getRepository(User);
+      targetUser = await userRepository.findOne({ where: { userId: targetUserId } });
+    } else {
+      // Это username
+      const userRepository = AppDataSource.getRepository(User);
+      targetUser = await userRepository.findOne({ where: { username: identifier } });
+    }
+
+    if (!targetUser) {
+      await ctx.reply(`❌ Пользователь "${identifier}" не найден в базе данных.`);
+      return;
+    }
+
+    // Проверяем, уже оплачен или нет
+    if (targetUser.hasPaid) {
+      await ctx.reply(
+        `ℹ️ Пользователь @${targetUser.username || targetUser.userId} уже помечен как оплативший.\n\n` +
+        `📅 Дата оплаты: ${targetUser.paidAt?.toLocaleString('ru-RU') || 'не указана'}\n` +
+        `📊 Статус: ${targetUser.currentStep}`
+      );
+      return;
+    }
+
+    // Помечаем как оплатившего
+    await userService.markAsPaid(targetUser.userId);
+    
+    await ctx.reply(
+      `✅ Пользователь @${targetUser.username || targetUser.userId} успешно помечен как оплативший!\n\n` +
+      `👤 User ID: ${targetUser.userId}\n` +
+      `📅 Дата: ${new Date().toLocaleString('ru-RU')}\n` +
+      `📊 Новый статус: completed\n\n` +
+      `💡 Теперь пользователь учитывается в статистике оплат.`
+    );
+    
+    console.log(`✅ Admin ${userId} manually marked user ${targetUser.userId} (@${targetUser.username}) as paid`);
+  } catch (error) {
+    console.error('❌ Ошибка при пометке пользователя как оплатившего:', error);
+    await ctx.reply('❌ Произошла ошибка при обработке команды. Проверьте логи.');
   }
 });
 
