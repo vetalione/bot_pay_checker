@@ -1,0 +1,38 @@
+📊 НАЙДЕННЫЕ РАССЫЛКИ:
+
+============================================================
+
+1. WARMUP
+   Дата: 06.11.2025 10:23:45
+   Всего пользователей: 172
+   Отправлено: 154
+   Ошибок: 18
+
+
+2. BOT_RESTORED
+   Дата: 03.11.2025 01:40:15
+   Отправлено: 235
+   Ошибок: 15
+
+
+3. STUCK_USERS
+   Дата: 02.11.2025 21:50:12
+   Сегменты:
+      - start: 89/95
+      - video1: 68/76
+   Всего пользователей: 171
+   Отправлено: 157
+   Ошибок: 14
+
+============================================================
+
+💾 SQL для вставки в БД:
+
+INSERT INTO broadcast_history (created_at, broadcast_type, segment_start, segment_video1, total_attempted, total_sent, total_failed)
+VALUES ('2025-11-06 10:23:45', 'warmup', 0, 0, 172, 154, 18);
+
+INSERT INTO broadcast_history (created_at, broadcast_type, segment_start, segment_video1, total_attempted, total_sent, total_failed)
+VALUES ('2025-11-03 01:40:15', 'bot_restored', 0, 0, 250, 235, 15);
+
+INSERT INTO broadcast_history (created_at, broadcast_type, segment_start, segment_video1, total_attempted, total_sent, total_failed)
+VALUES ('2025-11-02 21:50:12', 'stuck_users', 89, 68, 171, 157, 14);

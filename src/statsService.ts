@@ -7,6 +7,8 @@ interface StatsSnapshot {
   timestamp: Date;
   totalUsers: number;
   successfulPayments: number;
+  
+  // Старые поля (legacy, оставляем для совместимости)
   stuckAtStart: number;
   stuckAtVideo1: number;
   stuckAtVideo2: number;
@@ -15,8 +17,29 @@ interface StatsSnapshot {
   chosePaymentNoReceipt: number;
   receiptRejected: number;
   tributeClicksTotal: number;
+  
+  // Новые поля: распределение по currentStep
+  currentStepStart: number;
+  currentStepVideo1: number;
+  currentStepVideo2: number;
+  currentStepVideo3: number;
+  currentStepPaymentChoice: number;
+  currentStepWaitingReceipt: number;
+  currentStepCompleted: number;
+  
+  // Автодогрев
   warmupStartSent: number;
   warmupVideo1Sent: number;
+  
+  // Напоминания
+  video1ReminderSent: number;
+  paymentReminderSent: number;
+  receiptReminderSent: number;
+  
+  // Методы оплаты
+  paidUAH: number;
+  paidRUB: number;
+  paidEUR: number;
 }
 
 // Хранилище последнего snapshot (в памяти, для простоты)
@@ -177,10 +200,41 @@ export class StatsService {
         return;
       }
 
+      // Получаем распределение по currentStep
+      const currentStepDistribution = await AppDataSource.query(`
+        SELECT 
+          "currentStep",
+          COUNT(*) as count
+        FROM users
+        GROUP BY "currentStep"
+      `);
+      
+      const getStepCount = (step: string): number => {
+        const found = currentStepDistribution.find((row: any) => row.currentStep === step);
+        return parseInt(found?.count || '0');
+      };
+
+      // Получаем методы оплаты
+      const paymentMethods = await AppDataSource.query(`
+        SELECT 
+          currency,
+          COUNT(*) as count
+        FROM users
+        WHERE "hasPaid" = true
+        GROUP BY currency
+      `);
+      
+      const getPaymentCount = (currency: string): number => {
+        const found = paymentMethods.find((row: any) => row.currency === currency);
+        return parseInt(found?.count || '0');
+      };
+
       lastSnapshot = {
         timestamp: new Date(),
         totalUsers: stats.total_users_started,
         successfulPayments: stats.total_successful_payments,
+        
+        // Legacy поля
         stuckAtStart: steps.stuck_at_start,
         stuckAtVideo1: steps.stuck_at_video1,
         stuckAtVideo2: steps.stuck_at_video2,
@@ -189,8 +243,29 @@ export class StatsService {
         chosePaymentNoReceipt: steps.chose_payment_no_receipt,
         receiptRejected: steps.receipt_rejected,
         tributeClicksTotal: tributeClicks.total,
+        
+        // Новые: распределение по currentStep
+        currentStepStart: getStepCount('start'),
+        currentStepVideo1: getStepCount('video1'),
+        currentStepVideo2: getStepCount('video2'),
+        currentStepVideo3: getStepCount('video3'),
+        currentStepPaymentChoice: getStepCount('payment_choice'),
+        currentStepWaitingReceipt: getStepCount('waiting_receipt'),
+        currentStepCompleted: getStepCount('completed'),
+        
+        // Автодогрев
         warmupStartSent: reminders.warmupStart,
         warmupVideo1Sent: reminders.warmupVideo1,
+        
+        // Напоминания
+        video1ReminderSent: reminders.video1,
+        paymentReminderSent: reminders.paymentChoice,
+        receiptReminderSent: reminders.receipt,
+        
+        // Методы оплаты
+        paidUAH: getPaymentCount('UAH'),
+        paidRUB: getPaymentCount('RUB'),
+        paidEUR: getPaymentCount('EUR'),
       };
     } catch (error) {
       console.error('Ошибка создания snapshot:', error);
@@ -203,6 +278,7 @@ export class StatsService {
   async getDelta(): Promise<{
     hasChanges: boolean;
     timeSinceLastCheck: string;
+    lastSnapshot: StatsSnapshot;
     changes: {
       newUsers: number;
       newPayments: number;
@@ -267,6 +343,7 @@ export class StatsService {
       return {
         hasChanges,
         timeSinceLastCheck,
+        lastSnapshot,
         changes,
       };
     } catch (error) {
