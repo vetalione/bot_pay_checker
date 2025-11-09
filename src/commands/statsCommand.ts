@@ -252,6 +252,10 @@ export async function statsCommand(ctx: Context) {
 
   } catch (error) {
     console.error('Ошибка в команде /stats:', error);
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
     await ctx.reply('❌ Произошла ошибка при получении статистики');
   }
 }
