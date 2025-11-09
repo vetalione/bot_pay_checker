@@ -150,10 +150,26 @@ export async function statsCommand(ctx: Context) {
     const percentRUB = paid > 0 ? ((paidRUB / paid) * 100).toFixed(1) : '0.0';
     const percentEUR = paid > 0 ? ((paidEUR / paid) * 100).toFixed(1) : '0.0';
 
-    message += `<b>💰 МЕТОДЫ ОПЛАТЫ</b> (всего ${paid})\n`;
-    message += `├─ UAH Card: ${paidUAH} чел (${percentUAH}%)\n`;
-    message += `├─ RUB Tribute: ${paidRUB} чел (${percentRUB}%)\n`;
-    message += `└─ EUR Tribute: ${paidEUR} чел (${percentEUR}%)\n\n`;
+    // Дельта по методам оплаты
+    const deltaUAH = delta && delta.hasChanges && delta.lastSnapshot ? paidUAH - delta.lastSnapshot.paidUAH : 0;
+    const deltaRUB = delta && delta.hasChanges && delta.lastSnapshot ? paidRUB - delta.lastSnapshot.paidRUB : 0;
+    const deltaEUR = delta && delta.hasChanges && delta.lastSnapshot ? paidEUR - delta.lastSnapshot.paidEUR : 0;
+
+    message += `<b>💰 МЕТОДЫ ОПЛАТЫ</b> (всего ${paid}`;
+    if (deltaPaid !== 0) message += ` / ${deltaPaid > 0 ? '+' : ''}${deltaPaid}`;
+    message += ')\n';
+    
+    message += `├─ UAH Card: ${paidUAH} чел`;
+    if (deltaUAH !== 0) message += ` (${deltaUAH > 0 ? '+' : ''}${deltaUAH})`;
+    message += ` | ${percentUAH}%\n`;
+    
+    message += `├─ RUB Tribute: ${paidRUB} чел`;
+    if (deltaRUB !== 0) message += ` (${deltaRUB > 0 ? '+' : ''}${deltaRUB})`;
+    message += ` | ${percentRUB}%\n`;
+    
+    message += `└─ EUR Tribute: ${paidEUR} чел`;
+    if (deltaEUR !== 0) message += ` (${deltaEUR > 0 ? '+' : ''}${deltaEUR})`;
+    message += ` | ${percentEUR}%\n\n`;
 
     // АВТОДОГРЕВ
     const warmupStart = parseInt(warmupCounts[0].warmup_start);
