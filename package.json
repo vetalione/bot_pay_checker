@@ -14,7 +14,9 @@
     "broadcast-stuck": "ts-node scripts/send_stuck_users_message.ts",
     "broadcast-restored": "ts-node scripts/send_bot_restored_message.ts",
     "broadcast-waiting": "ts-node scripts/send_waiting_receipt_message.ts",
-    "broadcast-reels": "ts-node broadcast_reels_camp.ts"
+    "broadcast-reels": "ts-node broadcast_reels_camp.ts",
+    "broadcast-bf": "ts-node broadcast_black_friday.ts",
+    "test-bf": "ts-node test_broadcast_bf.ts"
   },
   "keywords": [
     "telegram",
