@@ -197,10 +197,20 @@ export async function statsCommand(ctx: Context) {
     const paymentReminder = parseInt(reminderCounts[0].payment_reminder);
     const receiptReminder = parseInt(reminderCounts[0].receipt_reminder);
 
+    const deltaVideo1Reminder = delta && delta.hasChanges ? delta.changes.newVideo1Reminders || 0 : 0;
+    const deltaPaymentReminder = delta && delta.hasChanges ? delta.changes.newPaymentReminders || 0 : 0;
+    const deltaReceiptReminder = delta && delta.hasChanges ? delta.changes.newReceiptReminders || 0 : 0;
+
     message += '<b>📢 НАПОМИНАНИЯ 24ч</b> (за все время / дельта)\n';
-    message += `├─ video1: ${video1Reminder} всего\n`;
-    message += `├─ payment_choice: ${paymentReminder} всего\n`;
-    message += `└─ waiting_receipt: ${receiptReminder} всего\n\n`;
+    message += `├─ video1: ${video1Reminder} всего`;
+    if (deltaVideo1Reminder !== 0) message += ` (${deltaVideo1Reminder > 0 ? '+' : ''}${deltaVideo1Reminder})`;
+    message += '\n';
+    message += `├─ payment_choice: ${paymentReminder} всего`;
+    if (deltaPaymentReminder !== 0) message += ` (${deltaPaymentReminder > 0 ? '+' : ''}${deltaPaymentReminder})`;
+    message += '\n';
+    message += `└─ waiting_receipt: ${receiptReminder} всего`;
+    if (deltaReceiptReminder !== 0) message += ` (${deltaReceiptReminder > 0 ? '+' : ''}${deltaReceiptReminder})`;
+    message += '\n\n';
 
     // РАЗОВЫЕ РАССЫЛКИ
     message += `<b>📣 РАЗОВЫЕ РАССЫЛКИ</b> (всего: ${totalBroadcasts} за все время)\n`;
@@ -234,15 +244,18 @@ export async function statsCommand(ctx: Context) {
     }
 
     // КОНВЕРСИЯ
+    const startCount = getStepCount('start');
     const video1Count = getStepCount('video1');
-    const passedVideo1 = total - getStepCount('start');
+    const passedVideo1 = total - startCount; // Прошли дальше start
     const convVideo1 = total > 0 ? ((passedVideo1 / total) * 100).toFixed(1) : '0.0';
-    const convPayment = video1Count > 0 ? ((paid / video1Count) * 100).toFixed(1) : '0.0';
+    
+    // Конверсия: из тех кто прошёл video1 → сколько оплатило
+    const convPayment = passedVideo1 > 0 ? ((paid / passedVideo1) * 100).toFixed(1) : '0.0';
 
     message += '<b>⏱️ КОНВЕРСИЯ</b>\n';
     message += `├─ Средний путь до оплаты: ${avgTimeStr}\n`;
     message += `├─ start → video1: ${convVideo1}% (${passedVideo1}/${total})\n`;
-    message += `├─ video1 → оплата: ${convPayment}% (${paid}/${video1Count})\n`;
+    message += `├─ video1 → оплата: ${convPayment}% (${paid}/${passedVideo1})\n`;
     message += `└─ Общая конверсия: ${conversionRate}%`;
 
     await ctx.reply(message, { parse_mode: 'HTML' });

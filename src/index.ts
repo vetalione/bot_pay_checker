@@ -637,10 +637,9 @@ bot.action('pay_eur_tribute', async (ctx) => {
   // ✅ ОТСЛЕЖИВАНИЕ: Записываем клик в БД
   await trackUserAction(userService, ctx, 'choose_eur_tribute', 'payment_choice');
   
-  // ✅ ОБНОВЛЯЕМ пользователя: переводим в waiting_receipt
-  // Для EUR используем RUB как валюту в БД (т.к. это тоже Tribute)
+  // ✅ ОБНОВЛЯЕМ пользователя: переводим в waiting_receipt и сохраняем валюту
   await userService.updateUserStep(userId, 'waiting_receipt');
-  await userService.setUserCurrency(userId, 'RUB'); // EUR тоже трекаем как RUB (Tribute)
+  await userService.setUserCurrency(userId, 'EUR'); // EUR Tribute - отдельная валюта
   await userService.markWaitingForReceipt(userId);
   
   // Отправляем сообщение с URL-кнопкой Tribute

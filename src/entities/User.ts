@@ -22,7 +22,7 @@ export class User {
   currentStep: 'start' | 'want_button' | 'video1' | 'continue_button' | 'video2' | 'ready_button' | 'video3' | 'advantage_button' | 'payment_choice' | 'waiting_receipt' | 'completed';
 
   @Column({ type: 'varchar', nullable: true })
-  currency?: 'RUB' | 'UAH';
+  currency?: 'RUB' | 'UAH' | 'EUR';
 
   @Column({ type: 'boolean', default: false })
   hasPaid: boolean;

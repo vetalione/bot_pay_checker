@@ -292,6 +292,9 @@ export class StatsService {
       newTributeClicks: number;
       newWarmupStartSent: number;
       newWarmupVideo1Sent: number;
+      newVideo1Reminders: number;
+      newPaymentReminders: number;
+      newReceiptReminders: number;
     };
   } | null> {
     if (!lastSnapshot) {
@@ -335,6 +338,9 @@ export class StatsService {
         newTributeClicks: tributeClicks.total - lastSnapshot.tributeClicksTotal,
         newWarmupStartSent: reminders.warmupStart - lastSnapshot.warmupStartSent,
         newWarmupVideo1Sent: reminders.warmupVideo1 - lastSnapshot.warmupVideo1Sent,
+        newVideo1Reminders: reminders.video1 - lastSnapshot.video1ReminderSent,
+        newPaymentReminders: reminders.paymentChoice - lastSnapshot.paymentReminderSent,
+        newReceiptReminders: reminders.receipt - lastSnapshot.receiptReminderSent,
       };
 
       // Проверяем есть ли хоть какие-то изменения

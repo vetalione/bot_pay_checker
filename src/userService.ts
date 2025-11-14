@@ -54,7 +54,7 @@ export class UserService {
   /**
    * Установить валюту пользователя
    */
-  async setUserCurrency(userId: number, currency: 'RUB' | 'UAH'): Promise<void> {
+  async setUserCurrency(userId: number, currency: 'RUB' | 'UAH' | 'EUR'): Promise<void> {
     await this.userRepository.update({ userId }, { 
       currency,
       paymentReminderSent: false,
