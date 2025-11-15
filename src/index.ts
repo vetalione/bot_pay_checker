@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import { formatCardNumber, logWithTimestamp, delay } from './utils';
 import { MESSAGES, BUTTON_LABELS, VIDEO_CAPTIONS, TIMING } from './constants';
 import { statsCommand } from './commands/statsCommand';
+import { broadcastCommand } from './commands/broadcastCommand';
 import { validateReceiptWithGemini, ReceiptValidationResult } from './receiptValidator';
 import { initializeDatabase, AppDataSource } from './database';
 import { UserService } from './userService';
@@ -129,6 +130,9 @@ bot.start(async (ctx) => {
 
 // Команда /stats для админа - новый компактный формат
 bot.command('stats', statsCommand);
+
+// Команда /broadcast для просмотра истории рассылок
+bot.command('broadcast', broadcastCommand);
 
 // Команда /warmup_broadcast для разовой рассылки догрева всем застрявшим
 bot.command('warmup_broadcast', async (ctx) => {
