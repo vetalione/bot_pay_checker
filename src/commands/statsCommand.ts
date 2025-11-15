@@ -16,8 +16,10 @@ export async function statsCommand(ctx: Context) {
   }
 
   try {
+    console.log('[/stats] Starting stats command...');
     const statsService = new StatsService();
     
+    console.log('[/stats] Fetching data from database...');
     // Получаем все данные параллельно
     const [
       currentStepDistribution,
@@ -110,6 +112,8 @@ export async function statsCommand(ctx: Context) {
       // Дельта
       statsService.getDelta()
     ]);
+
+    console.log('[/stats] Data fetched successfully. Processing...');
 
     // Парсинг данных
     const getStepCount = (step: string): number => {
@@ -393,13 +397,17 @@ export async function statsCommand(ctx: Context) {
     message += `├─ video1 → оплата: ${convPayment}% (${paid}/${passedVideo1})\n`;
     message += `└─ Общая конверсия: ${conversionRate}%`;
 
+    console.log('[/stats] Sending reply...');
     await ctx.reply(message, { parse_mode: 'HTML' });
 
+    console.log('[/stats] Creating snapshot...');
     // Создаем новый snapshot
     await statsService.createSnapshot();
+    
+    console.log('[/stats] Stats command completed successfully!');
 
   } catch (error) {
-    console.error('Ошибка в команде /stats:', error);
+    console.error('[/stats] ERROR occurred:', error);
     if (error instanceof Error) {
       console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
