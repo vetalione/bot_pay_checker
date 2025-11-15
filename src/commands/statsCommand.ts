@@ -208,8 +208,8 @@ export async function statsCommand(ctx: Context) {
     message += ` | ${percentEUR}%\n\n`;
 
     // АВТОДОГРЕВ (старая система - скоро удалим)
-    const warmupStart = parseInt(warmupCounts[0].warmup_start);
-    const warmupVideo1 = parseInt(warmupCounts[0].warmup_video1);
+    const warmupStart = parseInt(warmupCounts[0]?.warmup_start || '0');
+    const warmupVideo1 = parseInt(warmupCounts[0]?.warmup_video1 || '0');
     const warmupTotal = warmupStart + warmupVideo1;
     
     const deltaWarmupStart = delta && delta.hasChanges ? delta.changes.newWarmupStartSent || 0 : 0;
@@ -224,9 +224,9 @@ export async function statsCommand(ctx: Context) {
     message += '\n\n';
 
     // НОВАЯ СИСТЕМА START (3 уровня)
-    const reminderLevel1Start = parseInt(newStartReminderCounts[0].reminder_level1_start);
-    const reminderLevel2Start = parseInt(newStartReminderCounts[0].reminder_level2_start);
-    const reminderLevel3Start = parseInt(newStartReminderCounts[0].reminder_level3_start);
+    const reminderLevel1Start = parseInt(newStartReminderCounts[0]?.reminder_level1_start || '0');
+    const reminderLevel2Start = parseInt(newStartReminderCounts[0]?.reminder_level2_start || '0');
+    const reminderLevel3Start = parseInt(newStartReminderCounts[0]?.reminder_level3_start || '0');
     const totalStartReminders = reminderLevel1Start + reminderLevel2Start + reminderLevel3Start;
     
     const deltaLevel1Start = delta && delta.hasChanges ? delta.changes.newReminderLevel1Start || 0 : 0;
@@ -250,9 +250,9 @@ export async function statsCommand(ctx: Context) {
     message += '\n\n';
 
     // НОВАЯ СИСТЕМА VIDEO1 (3 уровня)
-    const reminderLevel1Video1 = parseInt(newVideo1ReminderCounts[0].reminder_level1_video1);
-    const reminderLevel2Video1 = parseInt(newVideo1ReminderCounts[0].reminder_level2_video1);
-    const reminderLevel3Video1 = parseInt(newVideo1ReminderCounts[0].reminder_level3_video1);
+    const reminderLevel1Video1 = parseInt(newVideo1ReminderCounts[0]?.reminder_level1_video1 || '0');
+    const reminderLevel2Video1 = parseInt(newVideo1ReminderCounts[0]?.reminder_level2_video1 || '0');
+    const reminderLevel3Video1 = parseInt(newVideo1ReminderCounts[0]?.reminder_level3_video1 || '0');
     const totalVideo1Reminders = reminderLevel1Video1 + reminderLevel2Video1 + reminderLevel3Video1;
     
     const deltaLevel1Video1 = delta && delta.hasChanges ? delta.changes.newReminderLevel1Video1 || 0 : 0;
@@ -276,9 +276,9 @@ export async function statsCommand(ctx: Context) {
     message += '\n\n';
 
     // НОВАЯ СИСТЕМА VIDEO2 (3 уровня)
-    const reminderLevel1Video2 = parseInt(newVideo2ReminderCounts[0].reminder_level1_video2);
-    const reminderLevel2Video2 = parseInt(newVideo2ReminderCounts[0].reminder_level2_video2);
-    const reminderLevel3Video2 = parseInt(newVideo2ReminderCounts[0].reminder_level3_video2);
+    const reminderLevel1Video2 = parseInt(newVideo2ReminderCounts[0]?.reminder_level1_video2 || '0');
+    const reminderLevel2Video2 = parseInt(newVideo2ReminderCounts[0]?.reminder_level2_video2 || '0');
+    const reminderLevel3Video2 = parseInt(newVideo2ReminderCounts[0]?.reminder_level3_video2 || '0');
     const totalVideo2Reminders = reminderLevel1Video2 + reminderLevel2Video2 + reminderLevel3Video2;
     
     const deltaLevel1Video2 = delta && delta.hasChanges ? delta.changes.newReminderLevel1Video2 || 0 : 0;
@@ -302,9 +302,9 @@ export async function statsCommand(ctx: Context) {
     message += '\n\n';
 
     // НОВАЯ СИСТЕМА VIDEO3 (3 уровня)
-    const reminderLevel1Video3 = parseInt(newVideo3ReminderCounts[0].reminder_level1_video3);
-    const reminderLevel2Video3 = parseInt(newVideo3ReminderCounts[0].reminder_level2_video3);
-    const reminderLevel3Video3 = parseInt(newVideo3ReminderCounts[0].reminder_level3_video3);
+    const reminderLevel1Video3 = parseInt(newVideo3ReminderCounts[0]?.reminder_level1_video3 || '0');
+    const reminderLevel2Video3 = parseInt(newVideo3ReminderCounts[0]?.reminder_level2_video3 || '0');
+    const reminderLevel3Video3 = parseInt(newVideo3ReminderCounts[0]?.reminder_level3_video3 || '0');
     const totalVideo3Reminders = reminderLevel1Video3 + reminderLevel2Video3 + reminderLevel3Video3;
     
     const deltaLevel1Video3 = delta && delta.hasChanges ? delta.changes.newReminderLevel1Video3 || 0 : 0;
@@ -328,9 +328,9 @@ export async function statsCommand(ctx: Context) {
     message += '\n\n';
 
     // НАПОМИНАНИЯ (старая система для других этапов)
-    const video1Reminder = parseInt(reminderCounts[0].video1_reminder);
-    const paymentReminder = parseInt(reminderCounts[0].payment_reminder);
-    const receiptReminder = parseInt(reminderCounts[0].receipt_reminder);
+    const video1Reminder = parseInt(reminderCounts[0]?.video1_reminder || '0');
+    const paymentReminder = parseInt(reminderCounts[0]?.payment_reminder || '0');
+    const receiptReminder = parseInt(reminderCounts[0]?.receipt_reminder || '0');
 
     const deltaVideo1Reminder = delta && delta.hasChanges ? delta.changes.newVideo1Reminders || 0 : 0;
     const deltaPaymentReminder = delta && delta.hasChanges ? delta.changes.newPaymentReminders || 0 : 0;
