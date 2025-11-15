@@ -103,10 +103,15 @@ export class ReminderService {
       await this.checkStartRemindersLevel2();
       await this.checkStartRemindersLevel3();
       
+      // Новая система: 3 уровня для VIDEO1
+      await this.checkVideo1RemindersLevel1();
+      await this.checkVideo1RemindersLevel2();
+      await this.checkVideo1RemindersLevel3();
+      
       // Старая система для остальных этапов (пока не мигрировали)
       await this.checkPaymentChoiceReminders();
       // await this.checkReceiptReminders(); // УБРАНО: RUB теперь только через Tribute
-      await this.checkVideo1Reminders();
+      // await this.checkVideo1Reminders(); // УБРАНО: Заменено на 3-уровневую систему
     } catch (error) {
       console.error('❌ Ошибка в checkAndSendReminders:', error);
     }
@@ -296,7 +301,193 @@ export class ReminderService {
   }
 
   /**
-   * ===== СТАРАЯ СИСТЕМА (для payment_choice и video1) =====
+   * ===== НОВАЯ СИСТЕМА: 3 уровня напоминаний для VIDEO1 =====
+   */
+
+  /**
+   * Level 1: Проверка напоминаний VIDEO1 (5 минут)
+   */
+  private async checkVideo1RemindersLevel1() {
+    const userRepository = AppDataSource.getRepository(User);
+    const fiveMinutesAgo = new Date(Date.now() - this.LEVEL1_DELAY_MS);
+
+    const usersToRemind = await userRepository.find({
+      where: {
+        currentStep: 'video1',
+        hasPaid: false,
+        reminderLevel1Video1: false,
+      }
+    });
+
+    console.log(`📊 VIDEO1 Level 1: найдено ${usersToRemind.length} пользователей для проверки`);
+
+    for (const user of usersToRemind) {
+      if (user.currentStepChangedAt && user.currentStepChangedAt <= fiveMinutesAgo) {
+        await this.sendVideo1ReminderLevel1(user);
+      }
+    }
+  }
+
+  /**
+   * Level 2: Проверка напоминаний VIDEO1 (1 час)
+   */
+  private async checkVideo1RemindersLevel2() {
+    const userRepository = AppDataSource.getRepository(User);
+    const oneHourAgo = new Date(Date.now() - this.LEVEL2_DELAY_MS);
+
+    const usersToRemind = await userRepository.find({
+      where: {
+        currentStep: 'video1',
+        hasPaid: false,
+        reminderLevel1Video1: true, // Уже получили Level 1
+        reminderLevel2Video1: false,
+      }
+    });
+
+    console.log(`📊 VIDEO1 Level 2: найдено ${usersToRemind.length} пользователей для проверки`);
+
+    for (const user of usersToRemind) {
+      if (user.currentStepChangedAt && user.currentStepChangedAt <= oneHourAgo) {
+        await this.sendVideo1ReminderLevel2(user);
+      }
+    }
+  }
+
+  /**
+   * Level 3: Проверка напоминаний VIDEO1 (24 часа)
+   */
+  private async checkVideo1RemindersLevel3() {
+    const userRepository = AppDataSource.getRepository(User);
+    const twentyFourHoursAgo = new Date(Date.now() - this.LEVEL3_DELAY_MS);
+
+    const usersToRemind = await userRepository.find({
+      where: {
+        currentStep: 'video1',
+        hasPaid: false,
+        reminderLevel2Video1: true, // Уже получили Level 2
+        reminderLevel3Video1: false,
+      }
+    });
+
+    console.log(`📊 VIDEO1 Level 3: найдено ${usersToRemind.length} пользователей для проверки`);
+
+    for (const user of usersToRemind) {
+      if (user.currentStepChangedAt && user.currentStepChangedAt <= twentyFourHoursAgo) {
+        await this.sendVideo1ReminderLevel3(user);
+      }
+    }
+  }
+
+  /**
+   * Отправка VIDEO1 Level 1 (5 минут)
+   */
+  private async sendVideo1ReminderLevel1(user: User) {
+    try {
+      const firstName = user.firstName || 'Друг';
+      const gender = this.detectGender(user.firstName);
+      
+      let text = `${firstName}, видео зависло? 🤔
+
+Или решил(а/) обдумать? Это нормально — 
+когда видишь чужие результаты, сначала кажется нереальным.
+
+Но вот факт: 8 человек из вчерашней рассылки уже оплатили 
+и получили доступ к инструментам. Сегодня они уже в деле 💪
+
+Продолжим?`;
+
+      text = this.personalizeText(text, gender);
+
+      await this.bot.telegram.sendMessage(
+        user.userId,
+        text,
+        Markup.inlineKeyboard([
+          [Markup.button.callback('▶️ Смотреть дальше', 'continue')]
+        ])
+      );
+
+      const userRepository = AppDataSource.getRepository(User);
+      user.reminderLevel1Video1 = true;
+      await userRepository.save(user);
+
+      console.log(`✅ VIDEO1 Level 1 отправлен пользователю ${user.userId}`);
+    } catch (error: any) {
+      console.error(`❌ Ошибка отправки VIDEO1 Level 1 пользователю ${user.userId}:`, error.message);
+    }
+  }
+
+  /**
+   * Отправка VIDEO1 Level 2 (1 час)
+   */
+  private async sendVideo1ReminderLevel2(user: User) {
+    try {
+      const firstName = user.firstName || 'Друг';
+
+      const text = `${firstName}, а ты знаешь что самое крутое?
+
+90% тех кто дошел до конца воронки — оплатили в первый же день.
+Потому что увидели реальную систему, а не очередной "волшебный курс".
+
+Не хочешь смотреть видео? Понимаю, у всех мало времени.
+Могу сразу показать ссылку на платный канал с инструментами.`;
+
+      await this.bot.telegram.sendMessage(
+        user.userId,
+        text,
+        Markup.inlineKeyboard([
+          [Markup.button.callback('💎 Хочу сразу в канал', 'video1_skip_to_payment')],
+          [Markup.button.callback('🎬 Досмотреть видео', 'continue')]
+        ])
+      );
+
+      const userRepository = AppDataSource.getRepository(User);
+      user.reminderLevel2Video1 = true;
+      await userRepository.save(user);
+
+      console.log(`✅ VIDEO1 Level 2 отправлен пользователю ${user.userId}`);
+    } catch (error: any) {
+      console.error(`❌ Ошибка отправки VIDEO1 Level 2 пользователю ${user.userId}:`, error.message);
+    }
+  }
+
+  /**
+   * Отправка VIDEO1 Level 3 (24 часа)
+   */
+  private async sendVideo1ReminderLevel3(user: User) {
+    try {
+      const firstName = user.firstName || 'Друг';
+      const gender = this.detectGender(user.firstName);
+
+      let text = `${firstName}, честно скажу — жалко терять тебя 😔
+
+Ты уже потратил(а/) время на первое видео.
+Осталось 5 минут до финала и кнопки оплаты.
+
+После этого я больше не буду беспокоить. Обещаю.`;
+
+      text = this.personalizeText(text, gender);
+
+      await this.bot.telegram.sendMessage(
+        user.userId,
+        text,
+        Markup.inlineKeyboard([
+          [Markup.button.url('📨 Написать ассистенту', 'https://t.me/vetalsmirnov')],
+          [Markup.button.callback('▶️ Закончить просмотр', 'continue')]
+        ])
+      );
+
+      const userRepository = AppDataSource.getRepository(User);
+      user.reminderLevel3Video1 = true;
+      await userRepository.save(user);
+
+      console.log(`✅ VIDEO1 Level 3 отправлен пользователю ${user.userId}`);
+    } catch (error: any) {
+      console.error(`❌ Ошибка отправки VIDEO1 Level 3 пользователю ${user.userId}:`, error.message);
+    }
+  }
+
+  /**
+   * ===== СТАРАЯ СИСТЕМА (для payment_choice) =====
    */
 
   /**

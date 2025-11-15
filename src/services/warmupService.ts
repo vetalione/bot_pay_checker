@@ -29,16 +29,17 @@ export class WarmupService {
       //   .andWhere('user.lastActivityAt < NOW() - INTERVAL \'5 minutes\'')
       //   .getMany();
 
-      // Находим пользователей застрявших на video1 (10 минут)
-      const video1Users = await userRepo
-        .createQueryBuilder('user')
-        .where('user.currentStep = :step', { step: 'video1' })
-        .andWhere('user.hasPaid = false')
-        .andWhere('user.warmupVideo1Sent = false')
-        .andWhere('user.lastActivityAt < NOW() - INTERVAL \'10 minutes\'')
-        .getMany();
+      // ОТКЛЮЧЕНО: Находим пользователей застрявших на video1 (10 минут)
+      // Теперь используется новая 3-уровневая система в ReminderService
+      // const video1Users = await userRepo
+      //   .createQueryBuilder('user')
+      //   .where('user.currentStep = :step', { step: 'video1' })
+      //   .andWhere('user.hasPaid = false')
+      //   .andWhere('user.warmupVideo1Sent = false')
+      //   .andWhere('user.lastActivityAt < NOW() - INTERVAL \'10 minutes\'')
+      //   .getMany();
 
-      console.log(`🔥 Warmup: 0 на start (отключено), ${video1Users.length} на video1`);
+      console.log(`🔥 Warmup: 0 на start (отключено), 0 на video1 (отключено) - используется новая 3-уровневая система`);
 
       // ОТКЛЮЧЕНО: Отправляем догрев для start
       // for (const user of startUsers) {
@@ -52,17 +53,17 @@ export class WarmupService {
       //   }
       // }
 
-      // Отправляем догрев для video1
-      for (const user of video1Users) {
-        try {
-          await this.sendWarmupMessage(user);
-          user.warmupVideo1Sent = true;
-          await userRepo.save(user);
-          console.log(`✅ Warmup отправлен пользователю ${user.userId} (video1)`);
-        } catch (error: any) {
-          console.error(`❌ Ошибка отправки warmup пользователю ${user.userId}:`, error.message);
-        }
-      }
+      // ОТКЛЮЧЕНО: Отправляем догрев для video1
+      // for (const user of video1Users) {
+      //   try {
+      //     await this.sendWarmupMessage(user);
+      //     user.warmupVideo1Sent = true;
+      //     await userRepo.save(user);
+      //     console.log(`✅ Warmup отправлен пользователю ${user.userId} (video1)`);
+      //   } catch (error: any) {
+      //     console.error(`❌ Ошибка отправки warmup пользователю ${user.userId}:`, error.message);
+      //   }
+      // }
     } catch (error) {
       console.error('❌ Ошибка в sendWarmupReminders:', error);
     }

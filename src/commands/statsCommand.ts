@@ -24,6 +24,7 @@ export async function statsCommand(ctx: Context) {
       paymentMethods,
       warmupCounts,
       newStartReminderCounts,
+      newVideo1ReminderCounts,
       reminderCounts,
       totalUsers,
       totalPaid,
@@ -57,6 +58,14 @@ export async function statsCommand(ctx: Context) {
           COUNT(*) FILTER (WHERE "reminderLevel1Start" = true) as reminder_level1_start,
           COUNT(*) FILTER (WHERE "reminderLevel2Start" = true) as reminder_level2_start,
           COUNT(*) FILTER (WHERE "reminderLevel3Start" = true) as reminder_level3_start
+        FROM users
+      `),
+      // Новая система VIDEO1 (3 уровня)
+      AppDataSource.query(`
+        SELECT 
+          COUNT(*) FILTER (WHERE "reminderLevel1Video1" = true) as reminder_level1_video1,
+          COUNT(*) FILTER (WHERE "reminderLevel2Video1" = true) as reminder_level2_video1,
+          COUNT(*) FILTER (WHERE "reminderLevel3Video1" = true) as reminder_level3_video1
         FROM users
       `),
       // Напоминания
@@ -222,6 +231,32 @@ export async function statsCommand(ctx: Context) {
     }
     message += '\n\n';
 
+    // НОВАЯ СИСТЕМА VIDEO1 (3 уровня)
+    const reminderLevel1Video1 = parseInt(newVideo1ReminderCounts[0].reminder_level1_video1);
+    const reminderLevel2Video1 = parseInt(newVideo1ReminderCounts[0].reminder_level2_video1);
+    const reminderLevel3Video1 = parseInt(newVideo1ReminderCounts[0].reminder_level3_video1);
+    const totalVideo1Reminders = reminderLevel1Video1 + reminderLevel2Video1 + reminderLevel3Video1;
+    
+    const deltaLevel1Video1 = delta && delta.hasChanges ? delta.changes.newReminderLevel1Video1 || 0 : 0;
+    const deltaLevel2Video1 = delta && delta.hasChanges ? delta.changes.newReminderLevel2Video1 || 0 : 0;
+    const deltaLevel3Video1 = delta && delta.hasChanges ? delta.changes.newReminderLevel3Video1 || 0 : 0;
+
+    message += '<b>⚡️ НОВАЯ СИСТЕМА VIDEO1 (3 уровня)</b>\n';
+    message += `├─ Level 1 (5 мин): ${reminderLevel1Video1} всего`;
+    if (deltaLevel1Video1 !== 0) message += ` (${deltaLevel1Video1 > 0 ? '+' : ''}${deltaLevel1Video1})`;
+    message += '\n';
+    message += `├─ Level 2 (1 час): ${reminderLevel2Video1} всего`;
+    if (deltaLevel2Video1 !== 0) message += ` (${deltaLevel2Video1 > 0 ? '+' : ''}${deltaLevel2Video1})`;
+    message += '\n';
+    message += `├─ Level 3 (24 часа): ${reminderLevel3Video1} всего`;
+    if (deltaLevel3Video1 !== 0) message += ` (${deltaLevel3Video1 > 0 ? '+' : ''}${deltaLevel3Video1})`;
+    message += '\n';
+    message += `└─ Итого VIDEO1 напоминаний: ${totalVideo1Reminders}`;
+    if (deltaLevel1Video1 + deltaLevel2Video1 + deltaLevel3Video1 !== 0) {
+      message += ` (+${deltaLevel1Video1 + deltaLevel2Video1 + deltaLevel3Video1})`;
+    }
+    message += '\n\n';
+
     // НАПОМИНАНИЯ (старая система для других этапов)
     const video1Reminder = parseInt(reminderCounts[0].video1_reminder);
     const paymentReminder = parseInt(reminderCounts[0].payment_reminder);
@@ -232,7 +267,7 @@ export async function statsCommand(ctx: Context) {
     const deltaReceiptReminder = delta && delta.hasChanges ? delta.changes.newReceiptReminders || 0 : 0;
 
     message += '<b>📢 НАПОМИНАНИЯ (старые)</b>\n';
-    message += `├─ video1 (10 мин): ${video1Reminder} всего`;
+    message += `├─ video1 (10 мин, старый): ${video1Reminder} всего`;
     if (deltaVideo1Reminder !== 0) message += ` (${deltaVideo1Reminder > 0 ? '+' : ''}${deltaVideo1Reminder})`;
     message += '\n';
     message += `├─ payment_choice (5 мин): ${paymentReminder} всего`;
