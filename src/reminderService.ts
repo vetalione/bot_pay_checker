@@ -157,52 +157,54 @@ export class ReminderService {
   }
 
   /**
-   * Level 2: Проверка напоминаний START (1 час)
+   * Level 2: Проверка напоминаний START (1 час после Level 1)
    */
   private async checkStartRemindersLevel2() {
-    const userRepository = AppDataSource.getRepository(User);
     const oneHourAgo = new Date(Date.now() - this.LEVEL2_DELAY_MS);
 
-    const usersToRemind = await userRepository.find({
-      where: {
-        currentStep: 'start',
-        hasPaid: false,
-        reminderLevel1Start: true, // Уже получили Level 1
-        reminderLevel2Start: false,
-      }
-    });
+    // Используем прямой SQL запрос - проверяем время отправки Level 1
+    const users = await AppDataSource.query(
+      `SELECT * FROM users 
+       WHERE "currentStep" = 'start' 
+       AND "hasPaid" = false 
+       AND "reminderLevel1Start" = true 
+       AND "reminderLevel2Start" = false
+       AND "reminderLevel1StartSentAt" IS NOT NULL
+       AND "reminderLevel1StartSentAt" <= $1`,
+      [oneHourAgo]
+    );
 
-    console.log(`📊 START Level 2: найдено ${usersToRemind.length} пользователей для проверки`);
+    console.log(`📊 START Level 2: найдено ${users.length} пользователей (>1ч после L1)`);
 
-    for (const user of usersToRemind) {
-      if (user.currentStepChangedAt && user.currentStepChangedAt <= oneHourAgo) {
-        await this.sendStartReminderLevel2(user);
-      }
+    for (const userData of users) {
+      const user = userData as User;
+      await this.sendStartReminderLevel2(user);
     }
   }
 
   /**
-   * Level 3: Проверка напоминаний START (24 часа)
+   * Level 3: Проверка напоминаний START (24 часа после Level 2)
    */
   private async checkStartRemindersLevel3() {
-    const userRepository = AppDataSource.getRepository(User);
     const twentyFourHoursAgo = new Date(Date.now() - this.LEVEL3_DELAY_MS);
 
-    const usersToRemind = await userRepository.find({
-      where: {
-        currentStep: 'start',
-        hasPaid: false,
-        reminderLevel2Start: true, // Уже получили Level 2
-        reminderLevel3Start: false,
-      }
-    });
+    // Используем прямой SQL запрос
+    const users = await AppDataSource.query(
+      `SELECT * FROM users 
+       WHERE "currentStep" = 'start' 
+       AND "hasPaid" = false 
+       AND "reminderLevel2Start" = true 
+       AND "reminderLevel3Start" = false
+       AND "reminderLevel2StartSentAt" IS NOT NULL
+       AND "reminderLevel2StartSentAt" <= $1`,
+      [twentyFourHoursAgo]
+    );
 
-    console.log(`📊 START Level 3: найдено ${usersToRemind.length} пользователей для проверки`);
+    console.log(`📊 START Level 3: найдено ${users.length} пользователей для проверки (>24 часа после L2)`);
 
-    for (const user of usersToRemind) {
-      if (user.currentStepChangedAt && user.currentStepChangedAt <= twentyFourHoursAgo) {
-        await this.sendStartReminderLevel3(user);
-      }
+    for (const userData of users) {
+      const user = userData as User;
+      await this.sendStartReminderLevel3(user);
     }
   }
 
@@ -234,6 +236,7 @@ export class ReminderService {
 
       const userRepository = AppDataSource.getRepository(User);
       user.reminderLevel1Start = true;
+      user.reminderLevel1StartSentAt = new Date();
       await userRepository.save(user);
 
       console.log(`✅ START Level 1 отправлен пользователю ${user.userId}`);
@@ -267,6 +270,7 @@ export class ReminderService {
 
       const userRepository = AppDataSource.getRepository(User);
       user.reminderLevel2Start = true;
+      user.reminderLevel2StartSentAt = new Date();
       await userRepository.save(user);
 
       console.log(`✅ START Level 2 отправлен пользователю ${user.userId}`);
@@ -303,6 +307,8 @@ export class ReminderService {
 
       const userRepository = AppDataSource.getRepository(User);
       user.reminderLevel3Start = true;
+      user.reminderLevel3StartSentAt = new Date();
+      user.reminderLevel3StartSentAt = new Date();
       await userRepository.save(user);
 
       console.log(`✅ START Level 3 отправлен пользователю ${user.userId}`);
@@ -340,52 +346,50 @@ export class ReminderService {
   }
 
   /**
-   * Level 2: Проверка напоминаний VIDEO1 (1 час)
+   * Level 2: Проверка напоминаний VIDEO1 (1 час после Level 1)
    */
   private async checkVideo1RemindersLevel2() {
-    const userRepository = AppDataSource.getRepository(User);
     const oneHourAgo = new Date(Date.now() - this.LEVEL2_DELAY_MS);
 
-    const usersToRemind = await userRepository.find({
-      where: {
-        currentStep: 'video1',
-        hasPaid: false,
-        reminderLevel1Video1: true, // Уже получили Level 1
-        reminderLevel2Video1: false,
-      }
-    });
+    // Прямой SQL запрос - проверяем время отправки Level 1
+    const usersToRemind = await AppDataSource.query(`
+      SELECT * FROM users
+      WHERE "currentStep" = 'video1'
+        AND "hasPaid" = false
+        AND "reminderLevel1Video1" = true
+        AND "reminderLevel2Video1" = false
+        AND "reminderLevel1Video1SentAt" IS NOT NULL
+        AND "reminderLevel1Video1SentAt" <= $1
+    `, [oneHourAgo]) as User[];
 
-    console.log(`📊 VIDEO1 Level 2: найдено ${usersToRemind.length} пользователей для проверки`);
+    console.log(`📊 VIDEO1 Level 2: найдено ${usersToRemind.length} пользователей (>1ч после L1)`);
 
     for (const user of usersToRemind) {
-      if (user.currentStepChangedAt && user.currentStepChangedAt <= oneHourAgo) {
-        await this.sendVideo1ReminderLevel2(user);
-      }
+      await this.sendVideo1ReminderLevel2(user);
     }
   }
 
   /**
-   * Level 3: Проверка напоминаний VIDEO1 (24 часа)
+   * Level 3: Проверка напоминаний VIDEO1 (24 часа после Level 2)
    */
   private async checkVideo1RemindersLevel3() {
-    const userRepository = AppDataSource.getRepository(User);
     const twentyFourHoursAgo = new Date(Date.now() - this.LEVEL3_DELAY_MS);
 
-    const usersToRemind = await userRepository.find({
-      where: {
-        currentStep: 'video1',
-        hasPaid: false,
-        reminderLevel2Video1: true, // Уже получили Level 2
-        reminderLevel3Video1: false,
-      }
-    });
+    // Прямой SQL запрос - проверяем время отправки Level 2
+    const usersToRemind = await AppDataSource.query(`
+      SELECT * FROM users
+      WHERE "currentStep" = 'video1'
+        AND "hasPaid" = false
+        AND "reminderLevel2Video1" = true
+        AND "reminderLevel3Video1" = false
+        AND "reminderLevel2Video1SentAt" IS NOT NULL
+        AND "reminderLevel2Video1SentAt" <= $1
+    `, [twentyFourHoursAgo]) as User[];
 
-    console.log(`📊 VIDEO1 Level 3: найдено ${usersToRemind.length} пользователей для проверки`);
+    console.log(`📊 VIDEO1 Level 3: найдено ${usersToRemind.length} пользователей (>24ч после L2)`);
 
     for (const user of usersToRemind) {
-      if (user.currentStepChangedAt && user.currentStepChangedAt <= twentyFourHoursAgo) {
-        await this.sendVideo1ReminderLevel3(user);
-      }
+      await this.sendVideo1ReminderLevel3(user);
     }
   }
 
@@ -419,6 +423,8 @@ export class ReminderService {
 
       const userRepository = AppDataSource.getRepository(User);
       user.reminderLevel1Video1 = true;
+      user.reminderLevel1Video1SentAt = new Date();
+      user.reminderLevel1Video1SentAt = new Date();
       await userRepository.save(user);
 
       console.log(`✅ VIDEO1 Level 1 отправлен пользователю ${user.userId}`);
@@ -453,6 +459,8 @@ export class ReminderService {
 
       const userRepository = AppDataSource.getRepository(User);
       user.reminderLevel2Video1 = true;
+      user.reminderLevel2Video1SentAt = new Date();
+      user.reminderLevel2Video1SentAt = new Date();
       await userRepository.save(user);
 
       console.log(`✅ VIDEO1 Level 2 отправлен пользователю ${user.userId}`);
@@ -489,6 +497,8 @@ export class ReminderService {
 
       const userRepository = AppDataSource.getRepository(User);
       user.reminderLevel3Video1 = true;
+      user.reminderLevel3Video1SentAt = new Date();
+      user.reminderLevel3Video1SentAt = new Date();
       await userRepository.save(user);
 
       console.log(`✅ VIDEO1 Level 3 отправлен пользователю ${user.userId}`);
@@ -526,52 +536,50 @@ export class ReminderService {
   }
 
   /**
-   * Level 2: Проверка напоминаний VIDEO2 (1 час)
+   * Level 2: Проверка напоминаний VIDEO2 (1 час после Level 1)
    */
   private async checkVideo2RemindersLevel2() {
-    const userRepository = AppDataSource.getRepository(User);
     const oneHourAgo = new Date(Date.now() - this.LEVEL2_DELAY_MS);
 
-    const usersToRemind = await userRepository.find({
-      where: {
-        currentStep: 'video2',
-        hasPaid: false,
-        reminderLevel1Video2: true, // Уже получили Level 1
-        reminderLevel2Video2: false,
-      }
-    });
+    // Прямой SQL запрос - проверяем время отправки Level 1
+    const usersToRemind = await AppDataSource.query(`
+      SELECT * FROM users
+      WHERE "currentStep" = 'video2'
+        AND "hasPaid" = false
+        AND "reminderLevel1Video2" = true
+        AND "reminderLevel2Video2" = false
+        AND "reminderLevel1Video2SentAt" IS NOT NULL
+        AND "reminderLevel1Video2SentAt" <= $1
+    `, [oneHourAgo]) as User[];
 
-    console.log(`📊 VIDEO2 Level 2: найдено ${usersToRemind.length} пользователей для проверки`);
+    console.log(`📊 VIDEO2 Level 2: найдено ${usersToRemind.length} пользователей (>1ч после L1)`);
 
     for (const user of usersToRemind) {
-      if (user.currentStepChangedAt && user.currentStepChangedAt <= oneHourAgo) {
-        await this.sendVideo2ReminderLevel2(user);
-      }
+      await this.sendVideo2ReminderLevel2(user);
     }
   }
 
   /**
-   * Level 3: Проверка напоминаний VIDEO2 (24 часа)
+   * Level 3: Проверка напоминаний VIDEO2 (24 часа после Level 2)
    */
   private async checkVideo2RemindersLevel3() {
-    const userRepository = AppDataSource.getRepository(User);
     const twentyFourHoursAgo = new Date(Date.now() - this.LEVEL3_DELAY_MS);
 
-    const usersToRemind = await userRepository.find({
-      where: {
-        currentStep: 'video2',
-        hasPaid: false,
-        reminderLevel2Video2: true, // Уже получили Level 2
-        reminderLevel3Video2: false,
-      }
-    });
+    // Прямой SQL запрос - проверяем время отправки Level 2
+    const usersToRemind = await AppDataSource.query(`
+      SELECT * FROM users
+      WHERE "currentStep" = 'video2'
+        AND "hasPaid" = false
+        AND "reminderLevel2Video2" = true
+        AND "reminderLevel3Video2" = false
+        AND "reminderLevel2Video2SentAt" IS NOT NULL
+        AND "reminderLevel2Video2SentAt" <= $1
+    `, [twentyFourHoursAgo]) as User[];
 
-    console.log(`📊 VIDEO2 Level 3: найдено ${usersToRemind.length} пользователей для проверки`);
+    console.log(`📊 VIDEO2 Level 3: найдено ${usersToRemind.length} пользователей (>24ч после L2)`);
 
     for (const user of usersToRemind) {
-      if (user.currentStepChangedAt && user.currentStepChangedAt <= twentyFourHoursAgo) {
-        await this.sendVideo2ReminderLevel3(user);
-      }
+      await this.sendVideo2ReminderLevel3(user);
     }
   }
 
@@ -603,6 +611,8 @@ export class ReminderService {
 
       const userRepository = AppDataSource.getRepository(User);
       user.reminderLevel1Video2 = true;
+      user.reminderLevel1Video2SentAt = new Date();
+      user.reminderLevel1Video2SentAt = new Date();
       await userRepository.save(user);
 
       console.log(`✅ VIDEO2 Level 1 отправлен пользователю ${user.userId}`);
@@ -635,6 +645,8 @@ export class ReminderService {
 
       const userRepository = AppDataSource.getRepository(User);
       user.reminderLevel2Video2 = true;
+      user.reminderLevel2Video2SentAt = new Date();
+      user.reminderLevel2Video2SentAt = new Date();
       await userRepository.save(user);
 
       console.log(`✅ VIDEO2 Level 2 отправлен пользователю ${user.userId}`);
@@ -661,12 +673,9 @@ export class ReminderService {
       text = this.personalizeText(text, gender);
 
       // Отправляем фото с текстом
-      const imagePath = path.join(__dirname, '../../Image_2_screen.jpeg');
-      const { Input } = await import('telegraf');
-
       await this.bot.telegram.sendPhoto(
         user.userId,
-        Input.fromLocalFile(imagePath),
+        { source: './Image_2_screen.jpeg' },
         {
           caption: text,
           reply_markup: {
@@ -680,6 +689,8 @@ export class ReminderService {
 
       const userRepository = AppDataSource.getRepository(User);
       user.reminderLevel3Video2 = true;
+      user.reminderLevel3Video2SentAt = new Date();
+      user.reminderLevel3Video2SentAt = new Date();
       await userRepository.save(user);
 
       console.log(`✅ VIDEO2 Level 3 отправлен пользователю ${user.userId}`);
@@ -721,22 +732,23 @@ export class ReminderService {
   }
 
   /**
-   * Level 2: Проверка напоминаний VIDEO3 (1 час)
+   * Level 2: Проверка напоминаний VIDEO3 (1 час после Level 1)
    */
   private async checkVideo3RemindersLevel2() {
     const oneHourAgo = new Date(Date.now() - this.LEVEL2_DELAY_MS);
 
-    // Прямой SQL запрос
+    // Прямой SQL запрос - проверяем время отправки Level 1
     const usersToRemind = await AppDataSource.query(`
       SELECT * FROM users
       WHERE "currentStep" = 'video3'
         AND "hasPaid" = false
         AND "reminderLevel1Video3" = true
         AND "reminderLevel2Video3" = false
-        AND "currentStepChangedAt" <= $1
+        AND "reminderLevel1Video3SentAt" IS NOT NULL
+        AND "reminderLevel1Video3SentAt" <= $1
     `, [oneHourAgo]) as User[];
 
-    console.log(`📊 VIDEO3 Level 2: найдено ${usersToRemind.length} пользователей для проверки`);
+    console.log(`📊 VIDEO3 Level 2: найдено ${usersToRemind.length} пользователей (>1ч после L1)`);
 
     for (const user of usersToRemind) {
       await this.sendVideo3ReminderLevel2(user);
@@ -744,22 +756,23 @@ export class ReminderService {
   }
 
   /**
-   * Level 3: Проверка напоминаний VIDEO3 (24 часа)
+   * Level 3: Проверка напоминаний VIDEO3 (24 часа после Level 2)
    */
   private async checkVideo3RemindersLevel3() {
     const twentyFourHoursAgo = new Date(Date.now() - this.LEVEL3_DELAY_MS);
 
-    // Прямой SQL запрос
+    // Прямой SQL запрос - проверяем время отправки Level 2
     const usersToRemind = await AppDataSource.query(`
       SELECT * FROM users
       WHERE "currentStep" = 'video3'
         AND "hasPaid" = false
         AND "reminderLevel2Video3" = true
         AND "reminderLevel3Video3" = false
-        AND "currentStepChangedAt" <= $1
+        AND "reminderLevel2Video3SentAt" IS NOT NULL
+        AND "reminderLevel2Video3SentAt" <= $1
     `, [twentyFourHoursAgo]) as User[];
 
-    console.log(`📊 VIDEO3 Level 3: найдено ${usersToRemind.length} пользователей для проверки`);
+    console.log(`📊 VIDEO3 Level 3: найдено ${usersToRemind.length} пользователей (>24ч после L2)`);
 
     for (const user of usersToRemind) {
       await this.sendVideo3ReminderLevel3(user);
@@ -788,14 +801,9 @@ export class ReminderService {
       text = this.personalizeText(text, gender);
 
       // Отправляем фото с текстом
-      const imagePath = path.join(__dirname, '../../Image_3_screen.jpeg');
-      console.log(`[VIDEO3 L1 SEND] Image path: ${imagePath}`);
-      
-      const { Input } = await import('telegraf');
-
       await this.bot.telegram.sendPhoto(
         user.userId,
-        Input.fromLocalFile(imagePath),
+        { source: './Image_3_screen.jpeg' },
         {
           caption: text,
           reply_markup: {
@@ -810,6 +818,7 @@ export class ReminderService {
       
       const userRepository = AppDataSource.getRepository(User);
       user.reminderLevel1Video3 = true;
+      user.reminderLevel1Video3SentAt = new Date();
       await userRepository.save(user);
 
       console.log(`✅ VIDEO3 Level 1 отправлен пользователю ${user.userId}`);
@@ -850,6 +859,7 @@ export class ReminderService {
 
       const userRepository = AppDataSource.getRepository(User);
       user.reminderLevel2Video3 = true;
+      user.reminderLevel2Video3SentAt = new Date();
       await userRepository.save(user);
 
       console.log(`✅ VIDEO3 Level 2 отправлен пользователю ${user.userId}`);
@@ -889,6 +899,7 @@ export class ReminderService {
 
       const userRepository = AppDataSource.getRepository(User);
       user.reminderLevel3Video3 = true;
+      user.reminderLevel3Video3SentAt = new Date();
       await userRepository.save(user);
 
       console.log(`✅ VIDEO3 Level 3 отправлен пользователю ${user.userId}`);

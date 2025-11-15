@@ -58,41 +58,77 @@ export class User {
   @Column({ type: 'boolean', default: false })
   reminderLevel1Start: boolean;
 
+  @Column({ type: 'timestamp', nullable: true })
+  reminderLevel1StartSentAt?: Date;
+
   @Column({ type: 'boolean', default: false })
   reminderLevel2Start: boolean;
 
+  @Column({ type: 'timestamp', nullable: true })
+  reminderLevel2StartSentAt?: Date;
+
   @Column({ type: 'boolean', default: false })
   reminderLevel3Start: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  reminderLevel3StartSentAt?: Date;
 
   // Новая система напоминаний - 3 уровня для VIDEO1
   @Column({ type: 'boolean', default: false })
   reminderLevel1Video1: boolean;
 
+  @Column({ type: 'timestamp', nullable: true })
+  reminderLevel1Video1SentAt?: Date;
+
   @Column({ type: 'boolean', default: false })
   reminderLevel2Video1: boolean;
 
+  @Column({ type: 'timestamp', nullable: true })
+  reminderLevel2Video1SentAt?: Date;
+
   @Column({ type: 'boolean', default: false })
   reminderLevel3Video1: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  reminderLevel3Video1SentAt?: Date;
 
   // Новая система напоминаний - 3 уровня для VIDEO2
   @Column({ type: 'boolean', default: false })
   reminderLevel1Video2: boolean;
 
+  @Column({ type: 'timestamp', nullable: true })
+  reminderLevel1Video2SentAt?: Date;
+
   @Column({ type: 'boolean', default: false })
   reminderLevel2Video2: boolean;
 
+  @Column({ type: 'timestamp', nullable: true })
+  reminderLevel2Video2SentAt?: Date;
+
   @Column({ type: 'boolean', default: false })
   reminderLevel3Video2: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  reminderLevel3Video2SentAt?: Date;
 
   // Новая система напоминаний - 3 уровня для VIDEO3
   @Column({ type: 'boolean', default: false })
   reminderLevel1Video3: boolean;
 
+  @Column({ type: 'timestamp', nullable: true })
+  reminderLevel1Video3SentAt?: Date;
+
   @Column({ type: 'boolean', default: false })
   reminderLevel2Video3: boolean;
 
+  @Column({ type: 'timestamp', nullable: true })
+  reminderLevel2Video3SentAt?: Date;
+
   @Column({ type: 'boolean', default: false })
   reminderLevel3Video3: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  reminderLevel3Video3SentAt?: Date;
 
   // Timestamp когда пользователь перешел на текущий currentStep
   @Column({ type: 'timestamp', nullable: true })
