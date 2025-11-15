@@ -699,6 +699,8 @@ export class ReminderService {
     const userRepository = AppDataSource.getRepository(User);
     const fiveMinutesAgo = new Date(Date.now() - this.LEVEL1_DELAY_MS);
 
+    console.log(`[VIDEO3 L1] Starting check. Looking for users on video3, not paid, reminder not sent yet`);
+    
     const usersToRemind = await userRepository.find({
       where: {
         currentStep: 'video3',
@@ -707,11 +709,16 @@ export class ReminderService {
       }
     });
 
+    console.log(`[VIDEO3 L1] Query returned ${usersToRemind.length} users`);
+    console.log(`[VIDEO3 L1] Filtering by time: currentStepChangedAt <= ${fiveMinutesAgo.toISOString()}`);
     console.log(`📊 VIDEO3 Level 1: найдено ${usersToRemind.length} пользователей для проверки`);
 
     for (const user of usersToRemind) {
       if (user.currentStepChangedAt && user.currentStepChangedAt <= fiveMinutesAgo) {
+        console.log(`[VIDEO3 L1] Sending reminder to user ${user.userId} (${user.firstName})`);
         await this.sendVideo3ReminderLevel1(user);
+      } else {
+        console.log(`[VIDEO3 L1] Skipping user ${user.userId} - too recent (${user.currentStepChangedAt})`);
       }
     }
   }
