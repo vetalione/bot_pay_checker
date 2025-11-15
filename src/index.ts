@@ -848,9 +848,25 @@ bot.action('pay_uah', async (ctx) => {
   );
 });
 
-// Обработка получения квитанции (фото)
+// Обработка получения квитанции (фото) и админ file_id
 bot.on(message('photo'), async (ctx) => {
   const userId = ctx.from.id;
+  
+  // Если админ отправляет фото - показываем file_id
+  if (userId === 278263484) {
+    const photo = ctx.message.photo;
+    const fileId = photo[photo.length - 1].file_id; // Самое высокое разрешение
+    console.log(`\n📸 [ADMIN PHOTO] file_id: ${fileId}\n`);
+    await ctx.reply(
+      `✅ Фото получено!\n\n` +
+      `\`${fileId}\`\n\n` +
+      `Скопируй этот file_id и используй в коде для отправки изображения.`,
+      { parse_mode: 'Markdown' }
+    );
+    return; // Не обрабатываем как обычное фото квитанции
+  }
+  
+  // Обычная обработка квитанций для пользователей
   const state = userStates.get(userId);
 
   console.log(`Photo received from user ${userId}, current state:`, state);
