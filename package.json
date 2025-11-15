@@ -16,6 +16,8 @@
     "broadcast-waiting": "ts-node scripts/send_waiting_receipt_message.ts",
     "broadcast-reels": "ts-node broadcast_reels_camp.ts",
     "broadcast-bf": "ts-node broadcast_black_friday.ts",
+    "broadcast-bf-day2": "ts-node broadcast_black_friday_day2.ts",
+    "broadcast-bf-day2-send": "ts-node broadcast_black_friday_day2.ts --send",
     "test-bf": "ts-node test_broadcast_bf.ts"
   },
   "keywords": [
