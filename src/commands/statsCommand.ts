@@ -4,7 +4,6 @@
 import { Context } from 'telegraf';
 import { StatsService } from '../statsService';
 import { AppDataSource } from '../database';
-import { BroadcastHistory } from '../entities/BroadcastHistory';
 
 export async function statsCommand(ctx: Context) {
   const userId = ctx.from!.id;
@@ -24,16 +23,13 @@ export async function statsCommand(ctx: Context) {
     const [
       currentStepDistribution,
       paymentMethods,
-      warmupCounts,
       newStartReminderCounts,
       newVideo1ReminderCounts,
       newVideo2ReminderCounts,
       newVideo3ReminderCounts,
-      reminderCounts,
       totalUsers,
       totalPaid,
       avgTimeToPayment,
-      broadcasts,
       delta
     ] = await Promise.all([
       // Распределение по currentStep
@@ -48,12 +44,6 @@ export async function statsCommand(ctx: Context) {
         FROM users
         WHERE "hasPaid" = true
         GROUP BY currency
-      `),
-      // Автодогрев (старая система)
-      AppDataSource.query(`
-        SELECT 
-          COUNT(*) FILTER (WHERE "warmupVideo1Sent" = true) as warmup_video1
-        FROM users
       `),
       // Новая система START (3 уровня)
       AppDataSource.query(`
@@ -87,14 +77,6 @@ export async function statsCommand(ctx: Context) {
           COUNT(*) FILTER (WHERE "reminderLevel3Video3" = true) as reminder_level3_video3
         FROM users
       `),
-      // Напоминания
-      AppDataSource.query(`
-        SELECT 
-          COUNT(*) FILTER (WHERE "video1ReminderSent" = true) as video1_reminder,
-          COUNT(*) FILTER (WHERE "paymentReminderSent" = true) as payment_reminder,
-          COUNT(*) FILTER (WHERE "receiptReminderSent" = true) as receipt_reminder
-        FROM users
-      `),
       // Всего пользователей
       AppDataSource.query(`SELECT COUNT(*) as count FROM users`),
       // Всего оплативших
@@ -105,9 +87,6 @@ export async function statsCommand(ctx: Context) {
         FROM users
         WHERE "hasPaid" = true AND "paidAt" IS NOT NULL
       `),
-      // Последние 3 рассылки
-      AppDataSource.getRepository(BroadcastHistory)
-        .find({ order: { createdAt: 'DESC' }, take: 3 }),
       // Дельта
       statsService.getDelta()
     ]);
@@ -134,9 +113,6 @@ export async function statsCommand(ctx: Context) {
       ? `${avgHours.toFixed(1)} ${avgHours > 4 ? 'часов' : 'часа'}`
       : `${(avgHours * 60).toFixed(0)} минут`;
 
-    // Подсчет количества рассылок
-    const totalBroadcasts = await AppDataSource.getRepository(BroadcastHistory).count();
-
     // Формируем сообщение
     let message = '📊 <b>СТАТИСТИКА БОТА</b>\n\n';
 
@@ -152,9 +128,7 @@ export async function statsCommand(ctx: Context) {
     message += ` | Конверсия: ${conversionRate}%\n\n`;
 
     // ВОРОНКА
-    message += '<b>📍 ВОРОНКА</b> (текущее положение';
-    if (delta && delta.hasChanges) message += ' / дельта';
-    message += ')\n';
+    message += '<b>📍 ВОРОНКА</b> (текущее / дельта)\n';
     
     const steps = [
       { icon: '🚀', name: 'start', count: getStepCount('start'), key: 'currentStepStart' },
@@ -210,23 +184,8 @@ export async function statsCommand(ctx: Context) {
     if (deltaEUR !== 0) message += ` (${deltaEUR > 0 ? '+' : ''}${deltaEUR})`;
     message += ` | ${percentEUR}%\n\n`;
 
-    // АВТОДОГРЕВ (старая система - скоро удалим)
-    const warmupStart = 0; // Колонка warmupStartSent удалена из БД
-    const warmupVideo1 = parseInt(warmupCounts[0]?.warmup_video1 || '0') || 0;
-    const warmupTotal = warmupStart + warmupVideo1;
-    
-    const deltaWarmupStart = 0; // Колонка warmupStartSent удалена из БД
-    const deltaWarmupVideo1 = delta && delta.hasChanges ? delta.changes.newWarmupVideo1Sent || 0 : 0;
-
-    message += '<b>🔥 АВТОДОГРЕВ (старый - отключен)</b>\n';
-    message += `├─ На start (удалено): ${warmupStart} всего`;
-    if (deltaWarmupStart !== 0) message += ` (${deltaWarmupStart > 0 ? '+' : ''}${deltaWarmupStart})`;
-    message += '\n';
-    message += `└─ На video1: ${warmupVideo1} всего`;
-    if (deltaWarmupVideo1 !== 0) message += ` (${deltaWarmupVideo1 > 0 ? '+' : ''}${deltaWarmupVideo1})`;
-    message += '\n\n';
-
-    // НОВАЯ СИСТЕМА START (3 уровня)
+    // НАПОМИНАНИЯ START (3 уровня)
+    // НАПОМИНАНИЯ START (3 уровня)
     const reminderLevel1Start = parseInt(newStartReminderCounts[0]?.reminder_level1_start || '0') || 0;
     const reminderLevel2Start = parseInt(newStartReminderCounts[0]?.reminder_level2_start || '0') || 0;
     const reminderLevel3Start = parseInt(newStartReminderCounts[0]?.reminder_level3_start || '0') || 0;
@@ -235,8 +194,9 @@ export async function statsCommand(ctx: Context) {
     const deltaLevel1Start = delta && delta.hasChanges ? delta.changes.newReminderLevel1Start || 0 : 0;
     const deltaLevel2Start = delta && delta.hasChanges ? delta.changes.newReminderLevel2Start || 0 : 0;
     const deltaLevel3Start = delta && delta.hasChanges ? delta.changes.newReminderLevel3Start || 0 : 0;
+    const deltaTotalStart = deltaLevel1Start + deltaLevel2Start + deltaLevel3Start;
 
-    message += '<b>⚡️ НОВАЯ СИСТЕМА START (3 уровня)</b>\n';
+    message += '<b>⚡️ НАПОМИНАНИЯ START</b> (3 уровня)\n';
     message += `├─ Level 1 (5 мин): ${reminderLevel1Start} всего`;
     if (deltaLevel1Start !== 0) message += ` (${deltaLevel1Start > 0 ? '+' : ''}${deltaLevel1Start})`;
     message += '\n';
@@ -246,13 +206,11 @@ export async function statsCommand(ctx: Context) {
     message += `├─ Level 3 (24 часа): ${reminderLevel3Start} всего`;
     if (deltaLevel3Start !== 0) message += ` (${deltaLevel3Start > 0 ? '+' : ''}${deltaLevel3Start})`;
     message += '\n';
-    message += `└─ Итого START напоминаний: ${totalStartReminders}`;
-    if (deltaLevel1Start + deltaLevel2Start + deltaLevel3Start !== 0) {
-      message += ` (+${deltaLevel1Start + deltaLevel2Start + deltaLevel3Start})`;
-    }
+    message += `└─ Итого START: ${totalStartReminders}`;
+    if (deltaTotalStart !== 0) message += ` (+${deltaTotalStart})`;
     message += '\n\n';
 
-    // НОВАЯ СИСТЕМА VIDEO1 (3 уровня)
+    // НАПОМИНАНИЯ VIDEO1 (3 уровня)
     const reminderLevel1Video1 = parseInt(newVideo1ReminderCounts[0]?.reminder_level1_video1 || '0') || 0;
     const reminderLevel2Video1 = parseInt(newVideo1ReminderCounts[0]?.reminder_level2_video1 || '0') || 0;
     const reminderLevel3Video1 = parseInt(newVideo1ReminderCounts[0]?.reminder_level3_video1 || '0') || 0;
@@ -261,8 +219,9 @@ export async function statsCommand(ctx: Context) {
     const deltaLevel1Video1 = delta && delta.hasChanges ? delta.changes.newReminderLevel1Video1 || 0 : 0;
     const deltaLevel2Video1 = delta && delta.hasChanges ? delta.changes.newReminderLevel2Video1 || 0 : 0;
     const deltaLevel3Video1 = delta && delta.hasChanges ? delta.changes.newReminderLevel3Video1 || 0 : 0;
+    const deltaTotalVideo1 = deltaLevel1Video1 + deltaLevel2Video1 + deltaLevel3Video1;
 
-    message += '<b>⚡️ НОВАЯ СИСТЕМА VIDEO1 (3 уровня)</b>\n';
+    message += '<b>⚡️ НАПОМИНАНИЯ VIDEO1</b> (3 уровня)\n';
     message += `├─ Level 1 (5 мин): ${reminderLevel1Video1} всего`;
     if (deltaLevel1Video1 !== 0) message += ` (${deltaLevel1Video1 > 0 ? '+' : ''}${deltaLevel1Video1})`;
     message += '\n';
@@ -272,13 +231,11 @@ export async function statsCommand(ctx: Context) {
     message += `├─ Level 3 (24 часа): ${reminderLevel3Video1} всего`;
     if (deltaLevel3Video1 !== 0) message += ` (${deltaLevel3Video1 > 0 ? '+' : ''}${deltaLevel3Video1})`;
     message += '\n';
-    message += `└─ Итого VIDEO1 напоминаний: ${totalVideo1Reminders}`;
-    if (deltaLevel1Video1 + deltaLevel2Video1 + deltaLevel3Video1 !== 0) {
-      message += ` (+${deltaLevel1Video1 + deltaLevel2Video1 + deltaLevel3Video1})`;
-    }
+    message += `└─ Итого VIDEO1: ${totalVideo1Reminders}`;
+    if (deltaTotalVideo1 !== 0) message += ` (+${deltaTotalVideo1})`;
     message += '\n\n';
 
-    // НОВАЯ СИСТЕМА VIDEO2 (3 уровня)
+    // НАПОМИНАНИЯ VIDEO2 (3 уровня)
     const reminderLevel1Video2 = parseInt(newVideo2ReminderCounts[0]?.reminder_level1_video2 || '0') || 0;
     const reminderLevel2Video2 = parseInt(newVideo2ReminderCounts[0]?.reminder_level2_video2 || '0') || 0;
     const reminderLevel3Video2 = parseInt(newVideo2ReminderCounts[0]?.reminder_level3_video2 || '0') || 0;
@@ -287,8 +244,9 @@ export async function statsCommand(ctx: Context) {
     const deltaLevel1Video2 = delta && delta.hasChanges ? delta.changes.newReminderLevel1Video2 || 0 : 0;
     const deltaLevel2Video2 = delta && delta.hasChanges ? delta.changes.newReminderLevel2Video2 || 0 : 0;
     const deltaLevel3Video2 = delta && delta.hasChanges ? delta.changes.newReminderLevel3Video2 || 0 : 0;
+    const deltaTotalVideo2 = deltaLevel1Video2 + deltaLevel2Video2 + deltaLevel3Video2;
 
-    message += '<b>⚡️ НОВАЯ СИСТЕМА VIDEO2 (3 уровня)</b>\n';
+    message += '<b>⚡️ НАПОМИНАНИЯ VIDEO2</b> (3 уровня)\n';
     message += `├─ Level 1 (5 мин): ${reminderLevel1Video2} всего`;
     if (deltaLevel1Video2 !== 0) message += ` (${deltaLevel1Video2 > 0 ? '+' : ''}${deltaLevel1Video2})`;
     message += '\n';
@@ -298,13 +256,11 @@ export async function statsCommand(ctx: Context) {
     message += `├─ Level 3 (24 часа): ${reminderLevel3Video2} всего`;
     if (deltaLevel3Video2 !== 0) message += ` (${deltaLevel3Video2 > 0 ? '+' : ''}${deltaLevel3Video2})`;
     message += '\n';
-    message += `└─ Итого VIDEO2 напоминаний: ${totalVideo2Reminders}`;
-    if (deltaLevel1Video2 + deltaLevel2Video2 + deltaLevel3Video2 !== 0) {
-      message += ` (+${deltaLevel1Video2 + deltaLevel2Video2 + deltaLevel3Video2})`;
-    }
+    message += `└─ Итого VIDEO2: ${totalVideo2Reminders}`;
+    if (deltaTotalVideo2 !== 0) message += ` (+${deltaTotalVideo2})`;
     message += '\n\n';
 
-    // НОВАЯ СИСТЕМА VIDEO3 (3 уровня)
+    // НАПОМИНАНИЯ VIDEO3 (3 уровня)
     const reminderLevel1Video3 = parseInt(newVideo3ReminderCounts[0]?.reminder_level1_video3 || '0') || 0;
     const reminderLevel2Video3 = parseInt(newVideo3ReminderCounts[0]?.reminder_level2_video3 || '0') || 0;
     const reminderLevel3Video3 = parseInt(newVideo3ReminderCounts[0]?.reminder_level3_video3 || '0') || 0;
@@ -313,8 +269,9 @@ export async function statsCommand(ctx: Context) {
     const deltaLevel1Video3 = delta && delta.hasChanges ? delta.changes.newReminderLevel1Video3 || 0 : 0;
     const deltaLevel2Video3 = delta && delta.hasChanges ? delta.changes.newReminderLevel2Video3 || 0 : 0;
     const deltaLevel3Video3 = delta && delta.hasChanges ? delta.changes.newReminderLevel3Video3 || 0 : 0;
+    const deltaTotalVideo3 = deltaLevel1Video3 + deltaLevel2Video3 + deltaLevel3Video3;
 
-    message += '<b>⚡️ НОВАЯ СИСТЕМА VIDEO3 (3 уровня)</b>\n';
+    message += '<b>⚡️ НАПОМИНАНИЯ VIDEO3</b> (3 уровня)\n';
     message += `├─ Level 1 (5 мин): ${reminderLevel1Video3} всего`;
     if (deltaLevel1Video3 !== 0) message += ` (${deltaLevel1Video3 > 0 ? '+' : ''}${deltaLevel1Video3})`;
     message += '\n';
@@ -324,62 +281,9 @@ export async function statsCommand(ctx: Context) {
     message += `├─ Level 3 (24 часа): ${reminderLevel3Video3} всего`;
     if (deltaLevel3Video3 !== 0) message += ` (${deltaLevel3Video3 > 0 ? '+' : ''}${deltaLevel3Video3})`;
     message += '\n';
-    message += `└─ Итого VIDEO3 напоминаний: ${totalVideo3Reminders}`;
-    if (deltaLevel1Video3 + deltaLevel2Video3 + deltaLevel3Video3 !== 0) {
-      message += ` (+${deltaLevel1Video3 + deltaLevel2Video3 + deltaLevel3Video3})`;
-    }
+    message += `└─ Итого VIDEO3: ${totalVideo3Reminders}`;
+    if (deltaTotalVideo3 !== 0) message += ` (+${deltaTotalVideo3})`;
     message += '\n\n';
-
-    // НАПОМИНАНИЯ (старая система для других этапов)
-    const video1Reminder = parseInt(reminderCounts[0]?.video1_reminder || '0') || 0;
-    const paymentReminder = parseInt(reminderCounts[0]?.payment_reminder || '0') || 0;
-    const receiptReminder = parseInt(reminderCounts[0]?.receipt_reminder || '0') || 0;
-
-    const deltaVideo1Reminder = delta && delta.hasChanges ? delta.changes.newVideo1Reminders || 0 : 0;
-    const deltaPaymentReminder = delta && delta.hasChanges ? delta.changes.newPaymentReminders || 0 : 0;
-    const deltaReceiptReminder = delta && delta.hasChanges ? delta.changes.newReceiptReminders || 0 : 0;
-
-    message += '<b>📢 НАПОМИНАНИЯ (старые)</b>\n';
-    message += `├─ video1 (10 мин, старый): ${video1Reminder} всего`;
-    if (deltaVideo1Reminder !== 0) message += ` (${deltaVideo1Reminder > 0 ? '+' : ''}${deltaVideo1Reminder})`;
-    message += '\n';
-    message += `├─ payment_choice (5 мин): ${paymentReminder} всего`;
-    if (deltaPaymentReminder !== 0) message += ` (${deltaPaymentReminder > 0 ? '+' : ''}${deltaPaymentReminder})`;
-    message += '\n';
-    message += `└─ waiting_receipt (5 мин): ${receiptReminder} всего`;
-    if (deltaReceiptReminder !== 0) message += ` (${deltaReceiptReminder > 0 ? '+' : ''}${deltaReceiptReminder})`;
-    message += '\n\n';
-
-    // РАЗОВЫЕ РАССЫЛКИ
-    message += `<b>📣 РАЗОВЫЕ РАССЫЛКИ</b> (всего: ${totalBroadcasts} за все время)\n`;
-    
-    if (broadcasts.length === 0) {
-      message += '└─ Рассылок пока не было\n\n';
-    } else {
-      for (let i = 0; i < broadcasts.length; i++) {
-        const b = broadcasts[i];
-        const date = new Date(b.createdAt);
-        const dateStr = date.toLocaleString('ru-RU', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
-        
-        const prefix = i === broadcasts.length - 1 ? '└─' : '├─';
-        let segments: string[] = [];
-        if (b.segmentStart > 0) segments.push(`start: ${b.segmentStart}`);
-        if (b.segmentVideo1 > 0) segments.push(`video1: ${b.segmentVideo1}`);
-        
-        message += `${prefix} ${dateStr} | ${b.broadcastType}`;
-        if (segments.length > 0) {
-          message += ` | ${segments.join(', ')}`;
-        }
-        message += ` | ${b.totalSent}/${b.totalAttempted}\n`;
-      }
-      message += '\n';
-    }
 
     // КОНВЕРСИЯ
     const startCount = getStepCount('start');
