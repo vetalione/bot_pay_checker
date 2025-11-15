@@ -771,6 +771,8 @@ export class ReminderService {
    */
   private async sendVideo3ReminderLevel1(user: User) {
     try {
+      console.log(`[VIDEO3 L1 SEND] Starting send to user ${user.userId} (${user.firstName})`);
+      
       const firstName = user.firstName || 'Друг';
       const gender = this.detectGender(user.firstName);
       
@@ -787,6 +789,8 @@ export class ReminderService {
 
       // Отправляем фото с текстом
       const imagePath = path.join(__dirname, '../../Image_3_screen.jpeg');
+      console.log(`[VIDEO3 L1 SEND] Image path: ${imagePath}`);
+      
       const { Input } = await import('telegraf');
 
       await this.bot.telegram.sendPhoto(
@@ -802,13 +806,18 @@ export class ReminderService {
         }
       );
 
+      console.log(`[VIDEO3 L1 SEND] Photo sent successfully, updating database...`);
+      
       const userRepository = AppDataSource.getRepository(User);
       user.reminderLevel1Video3 = true;
       await userRepository.save(user);
 
       console.log(`✅ VIDEO3 Level 1 отправлен пользователю ${user.userId}`);
     } catch (error: any) {
-      console.error(`❌ Ошибка отправки VIDEO3 Level 1 пользователю ${user.userId}:`, error.message);
+      console.error(`❌ [VIDEO3 L1 SEND] Ошибка отправки пользователю ${user.userId}:`);
+      console.error(`   Error type: ${error.constructor.name}`);
+      console.error(`   Error message: ${error.message}`);
+      console.error(`   Error stack:`, error.stack);
     }
   }
 
