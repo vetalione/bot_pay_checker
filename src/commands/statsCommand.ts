@@ -52,7 +52,6 @@ export async function statsCommand(ctx: Context) {
       // Автодогрев (старая система)
       AppDataSource.query(`
         SELECT 
-          COUNT(*) FILTER (WHERE "warmupStartSent" = true) as warmup_start,
           COUNT(*) FILTER (WHERE "warmupVideo1Sent" = true) as warmup_video1
         FROM users
       `),
@@ -212,15 +211,15 @@ export async function statsCommand(ctx: Context) {
     message += ` | ${percentEUR}%\n\n`;
 
     // АВТОДОГРЕВ (старая система - скоро удалим)
-    const warmupStart = parseInt(warmupCounts[0]?.warmup_start || '0') || 0;
+    const warmupStart = 0; // Колонка warmupStartSent удалена из БД
     const warmupVideo1 = parseInt(warmupCounts[0]?.warmup_video1 || '0') || 0;
     const warmupTotal = warmupStart + warmupVideo1;
     
-    const deltaWarmupStart = delta && delta.hasChanges ? delta.changes.newWarmupStartSent || 0 : 0;
+    const deltaWarmupStart = 0; // Колонка warmupStartSent удалена из БД
     const deltaWarmupVideo1 = delta && delta.hasChanges ? delta.changes.newWarmupVideo1Sent || 0 : 0;
 
-    message += '<b>🔥 АВТОДОГРЕВ (старый)</b>\n';
-    message += `├─ На start (старый): ${warmupStart} всего`;
+    message += '<b>🔥 АВТОДОГРЕВ (старый - отключен)</b>\n';
+    message += `├─ На start (удалено): ${warmupStart} всего`;
     if (deltaWarmupStart !== 0) message += ` (${deltaWarmupStart > 0 ? '+' : ''}${deltaWarmupStart})`;
     message += '\n';
     message += `└─ На video1: ${warmupVideo1} всего`;
