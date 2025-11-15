@@ -52,10 +52,21 @@ export class User {
   video1ReminderSent: boolean;
 
   @Column({ type: 'boolean', default: false })
-  warmupStartSent: boolean;
+  warmupVideo1Sent: boolean;
+
+  // Новая система напоминаний - 3 уровня для START
+  @Column({ type: 'boolean', default: false })
+  reminderLevel1Start: boolean;
 
   @Column({ type: 'boolean', default: false })
-  warmupVideo1Sent: boolean;
+  reminderLevel2Start: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  reminderLevel3Start: boolean;
+
+  // Timestamp когда пользователь перешел на текущий currentStep
+  @Column({ type: 'timestamp', nullable: true })
+  currentStepChangedAt?: Date;
 
   @CreateDateColumn()
   createdAt: Date;

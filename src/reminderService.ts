@@ -6,11 +6,66 @@ import { MoreThan } from 'typeorm';
 export class ReminderService {
   private bot: Telegraf;
   private intervalId?: NodeJS.Timeout;
-  private readonly REMINDER_DELAY_MS = 5 * 60 * 1000; // 5 минут
-  private readonly VIDEO1_REMINDER_DELAY_MS = 10 * 60 * 1000; // 10 минут
+  private readonly LEVEL1_DELAY_MS = 5 * 60 * 1000; // 5 минут
+  private readonly LEVEL2_DELAY_MS = 60 * 60 * 1000; // 1 час
+  private readonly LEVEL3_DELAY_MS = 24 * 60 * 60 * 1000; // 24 часа
+  private readonly VIDEO1_REMINDER_DELAY_MS = 10 * 60 * 1000; // 10 минут (старая логика для video1)
 
   constructor(bot: Telegraf) {
     this.bot = bot;
+  }
+
+  /**
+   * Определение пола по имени
+   * Скопировано из broadcast_black_friday.ts
+   */
+  private detectGender(firstName: string | undefined): 'male' | 'female' | 'unknown' {
+    if (!firstName) return 'unknown';
+    
+    const name = firstName.toLowerCase().trim();
+    
+    // Женские окончания
+    const femaleEndings = ['а', 'я', 'на', 'ла', 'ка', 'ша', 'ся'];
+    
+    // Исключения - мужские имена на -а/-я
+    const maleExceptions = ['никита', 'илья', 'савва', 'данила', 'миша', 'саша', 'женя'];
+    
+    // Проверяем исключения
+    if (maleExceptions.includes(name)) {
+      return 'male';
+    }
+    
+    // Проверяем женские окончания
+    for (const ending of femaleEndings) {
+      if (name.endsWith(ending)) {
+        return 'female';
+      }
+    }
+    
+    // По умолчанию - мужской пол
+    return 'male';
+  }
+
+  /**
+   * Персонализация текста по полу
+   */
+  private personalizeText(text: string, gender: 'male' | 'female' | 'unknown'): string {
+    if (gender === 'female') {
+      return text
+        .replace(/запустил\(а\/\)/g, 'запустила')
+        .replace(/остановился\(ась\/\)/g, 'остановилась')
+        .replace(/готов\(а\/\)/g, 'готова')
+        .replace(/видел\(а\/\)/g, 'видела')
+        .replace(/\(а\/\)/g, 'а');
+    } else {
+      // Мужской или unknown
+      return text
+        .replace(/запустил\(а\/\)/g, 'запустил')
+        .replace(/остановился\(ась\/\)/g, 'остановился')
+        .replace(/готов\(а\/\)/g, 'готов')
+        .replace(/видел\(а\/\)/g, 'видел')
+        .replace(/\(а\/\)/g, '');
+    }
   }
 
   /**
@@ -43,13 +98,206 @@ export class ReminderService {
    */
   private async checkAndSendReminders() {
     try {
+      // Новая система: 3 уровня для START
+      await this.checkStartRemindersLevel1();
+      await this.checkStartRemindersLevel2();
+      await this.checkStartRemindersLevel3();
+      
+      // Старая система для остальных этапов (пока не мигрировали)
       await this.checkPaymentChoiceReminders();
-      // await this.checkReceiptReminders(); // УБРАНО: RUB теперь только через Tribute (автоматически)
+      // await this.checkReceiptReminders(); // УБРАНО: RUB теперь только через Tribute
       await this.checkVideo1Reminders();
     } catch (error) {
       console.error('❌ Ошибка в checkAndSendReminders:', error);
     }
   }
+
+  /**
+   * ===== НОВАЯ СИСТЕМА: 3 уровня напоминаний для START =====
+   */
+
+  /**
+   * Level 1: Проверка напоминаний START (5 минут)
+   */
+  private async checkStartRemindersLevel1() {
+    const userRepository = AppDataSource.getRepository(User);
+    const fiveMinutesAgo = new Date(Date.now() - this.LEVEL1_DELAY_MS);
+
+    const usersToRemind = await userRepository.find({
+      where: {
+        currentStep: 'start',
+        hasPaid: false,
+        reminderLevel1Start: false,
+      }
+    });
+
+    console.log(`📊 START Level 1: найдено ${usersToRemind.length} пользователей для проверки`);
+
+    for (const user of usersToRemind) {
+      if (user.currentStepChangedAt && user.currentStepChangedAt <= fiveMinutesAgo) {
+        await this.sendStartReminderLevel1(user);
+      }
+    }
+  }
+
+  /**
+   * Level 2: Проверка напоминаний START (1 час)
+   */
+  private async checkStartRemindersLevel2() {
+    const userRepository = AppDataSource.getRepository(User);
+    const oneHourAgo = new Date(Date.now() - this.LEVEL2_DELAY_MS);
+
+    const usersToRemind = await userRepository.find({
+      where: {
+        currentStep: 'start',
+        hasPaid: false,
+        reminderLevel1Start: true, // Уже получили Level 1
+        reminderLevel2Start: false,
+      }
+    });
+
+    console.log(`📊 START Level 2: найдено ${usersToRemind.length} пользователей для проверки`);
+
+    for (const user of usersToRemind) {
+      if (user.currentStepChangedAt && user.currentStepChangedAt <= oneHourAgo) {
+        await this.sendStartReminderLevel2(user);
+      }
+    }
+  }
+
+  /**
+   * Level 3: Проверка напоминаний START (24 часа)
+   */
+  private async checkStartRemindersLevel3() {
+    const userRepository = AppDataSource.getRepository(User);
+    const twentyFourHoursAgo = new Date(Date.now() - this.LEVEL3_DELAY_MS);
+
+    const usersToRemind = await userRepository.find({
+      where: {
+        currentStep: 'start',
+        hasPaid: false,
+        reminderLevel2Start: true, // Уже получили Level 2
+        reminderLevel3Start: false,
+      }
+    });
+
+    console.log(`📊 START Level 3: найдено ${usersToRemind.length} пользователей для проверки`);
+
+    for (const user of usersToRemind) {
+      if (user.currentStepChangedAt && user.currentStepChangedAt <= twentyFourHoursAgo) {
+        await this.sendStartReminderLevel3(user);
+      }
+    }
+  }
+
+  /**
+   * Отправка START Level 1 (5 минут)
+   */
+  private async sendStartReminderLevel1(user: User) {
+    try {
+      const firstName = user.firstName || 'Друг';
+      const gender = this.detectGender(user.firstName);
+      
+      let text = `${firstName}, все в порядке? 😊
+
+Видел(а/), что ты запустил(а/) бота, но остановился(ась/). 
+Понимаю — иногда отвлекаемся на другие дела.
+
+Если интересно посмотреть как я заработал(а/) $15,000 через рилс — 
+просто нажми кнопку "Хочу!" ниже 👇`;
+
+      text = this.personalizeText(text, gender);
+
+      await this.bot.telegram.sendMessage(
+        user.userId,
+        text,
+        Markup.inlineKeyboard([
+          [Markup.button.callback('▶️ Продолжить', 'want')]
+        ])
+      );
+
+      const userRepository = AppDataSource.getRepository(User);
+      user.reminderLevel1Start = true;
+      await userRepository.save(user);
+
+      console.log(`✅ START Level 1 отправлен пользователю ${user.userId}`);
+    } catch (error: any) {
+      console.error(`❌ Ошибка отправки START Level 1 пользователю ${user.userId}:`, error.message);
+    }
+  }
+
+  /**
+   * Отправка START Level 2 (1 час)
+   */
+  private async sendStartReminderLevel2(user: User) {
+    try {
+      const firstName = user.firstName || 'Друг';
+
+      const text = `${firstName}, 73% моих клиентов говорят что пожалели только об одном — 
+что не начали раньше 😅
+
+У тебя всё ещё есть шанс попасть в закрытый чат, 
+где уже 110+ человек делятся своими результатами в рилс.
+
+Видео займёт 2 минуты, либо ты можешь их проматывать.`;
+
+      await this.bot.telegram.sendMessage(
+        user.userId,
+        text,
+        Markup.inlineKeyboard([
+          [Markup.button.callback('🎬 Смотреть видео', 'want')]
+        ])
+      );
+
+      const userRepository = AppDataSource.getRepository(User);
+      user.reminderLevel2Start = true;
+      await userRepository.save(user);
+
+      console.log(`✅ START Level 2 отправлен пользователю ${user.userId}`);
+    } catch (error: any) {
+      console.error(`❌ Ошибка отправки START Level 2 пользователю ${user.userId}:`, error.message);
+    }
+  }
+
+  /**
+   * Отправка START Level 3 (24 часа)
+   */
+  private async sendStartReminderLevel3(user: User) {
+    try {
+      const firstName = user.firstName || 'Друг';
+      const gender = this.detectGender(user.firstName);
+
+      let text = `${firstName}, последний раз напоминаю — обещаю не спамить 🙌
+
+Если сейчас не время — всё ок, возвращайся когда будешь готов(а/).
+
+Но если хочешь узнать систему которая принесла мне $15k — 
+я здесь, чтобы помочь.`;
+
+      text = this.personalizeText(text, gender);
+
+      await this.bot.telegram.sendMessage(
+        user.userId,
+        text,
+        Markup.inlineKeyboard([
+          [Markup.button.url('💬 Написать ассистенту', 'https://t.me/vetalsmirnov')],
+          [Markup.button.callback('▶️ Посмотреть видео', 'want')]
+        ])
+      );
+
+      const userRepository = AppDataSource.getRepository(User);
+      user.reminderLevel3Start = true;
+      await userRepository.save(user);
+
+      console.log(`✅ START Level 3 отправлен пользователю ${user.userId}`);
+    } catch (error: any) {
+      console.error(`❌ Ошибка отправки START Level 3 пользователю ${user.userId}:`, error.message);
+    }
+  }
+
+  /**
+   * ===== СТАРАЯ СИСТЕМА (для payment_choice и video1) =====
+   */
 
   /**
    * Проверка напоминаний о выборе способа оплаты
@@ -58,7 +306,7 @@ export class ReminderService {
     const userRepository = AppDataSource.getRepository(User);
     
     // Вычисляем время 5 минут назад
-    const fiveMinutesAgo = new Date(Date.now() - this.REMINDER_DELAY_MS);
+    const fiveMinutesAgo = new Date(Date.now() - this.LEVEL1_DELAY_MS);
 
     // Находим пользователей, которым показали выбор оплаты больше 5 минут назад
     // но они еще не выбрали валюту и им еще не отправляли напоминание
@@ -88,7 +336,7 @@ export class ReminderService {
     const userRepository = AppDataSource.getRepository(User);
     
     // Вычисляем время 5 минут назад
-    const fiveMinutesAgo = new Date(Date.now() - this.REMINDER_DELAY_MS);
+    const fiveMinutesAgo = new Date(Date.now() - this.LEVEL1_DELAY_MS);
 
     // Находим пользователей, которые выбрали RUB и ждут больше 5 минут
     const usersToRemind = await userRepository.find({

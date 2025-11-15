@@ -26,6 +26,10 @@ export class UserService {
         currentStep: 'start',
         hasPaid: false,
         lastActivityAt: new Date(),
+        currentStepChangedAt: new Date(), // Инициализируем timestamp
+        reminderLevel1Start: false,
+        reminderLevel2Start: false,
+        reminderLevel3Start: false,
       });
       await this.userRepository.save(user);
       console.log(`👤 Новый пользователь создан: ${userId} (@${username})`);
@@ -47,7 +51,8 @@ export class UserService {
   ): Promise<void> {
     await this.userRepository.update({ userId }, { 
       currentStep: step,
-      lastActivityAt: new Date()
+      lastActivityAt: new Date(),
+      currentStepChangedAt: new Date() // Обновляем timestamp при смене этапа
     });
   }
 

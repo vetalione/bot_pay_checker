@@ -19,14 +19,15 @@ export class WarmupService {
     try {
       const userRepo = AppDataSource.getRepository(User);
 
-      // Находим пользователей застрявших на start (5 минут)
-      const startUsers = await userRepo
-        .createQueryBuilder('user')
-        .where('user.currentStep = :step', { step: 'start' })
-        .andWhere('user.hasPaid = false')
-        .andWhere('user.warmupStartSent = false')
-        .andWhere('user.lastActivityAt < NOW() - INTERVAL \'5 minutes\'')
-        .getMany();
+      // ОТКЛЮЧЕНО: Находим пользователей застрявших на start (5 минут)
+      // Теперь используется новая 3-уровневая система в ReminderService
+      // const startUsers = await userRepo
+      //   .createQueryBuilder('user')
+      //   .where('user.currentStep = :step', { step: 'start' })
+      //   .andWhere('user.hasPaid = false')
+      //   .andWhere('user.warmupStartSent = false')
+      //   .andWhere('user.lastActivityAt < NOW() - INTERVAL \'5 minutes\'')
+      //   .getMany();
 
       // Находим пользователей застрявших на video1 (10 минут)
       const video1Users = await userRepo
@@ -37,19 +38,19 @@ export class WarmupService {
         .andWhere('user.lastActivityAt < NOW() - INTERVAL \'10 minutes\'')
         .getMany();
 
-      console.log(`🔥 Warmup: найдено ${startUsers.length} на start, ${video1Users.length} на video1`);
+      console.log(`🔥 Warmup: 0 на start (отключено), ${video1Users.length} на video1`);
 
-      // Отправляем догрев для start
-      for (const user of startUsers) {
-        try {
-          await this.sendWarmupMessage(user);
-          user.warmupStartSent = true;
-          await userRepo.save(user);
-          console.log(`✅ Warmup отправлен пользователю ${user.userId} (start)`);
-        } catch (error: any) {
-          console.error(`❌ Ошибка отправки warmup пользователю ${user.userId}:`, error.message);
-        }
-      }
+      // ОТКЛЮЧЕНО: Отправляем догрев для start
+      // for (const user of startUsers) {
+      //   try {
+      //     await this.sendWarmupMessage(user);
+      //     user.warmupStartSent = true;
+      //     await userRepo.save(user);
+      //     console.log(`✅ Warmup отправлен пользователю ${user.userId} (start)`);
+      //   } catch (error: any) {
+      //     console.error(`❌ Ошибка отправки warmup пользователю ${user.userId}:`, error.message);
+      //   }
+      // }
 
       // Отправляем догрев для video1
       for (const user of video1Users) {
