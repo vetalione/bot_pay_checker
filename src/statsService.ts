@@ -46,6 +46,11 @@ interface StatsSnapshot {
   reminderLevel2Video2: number;
   reminderLevel3Video2: number;
   
+  // Новая система напоминаний VIDEO3 (3 уровня)
+  reminderLevel1Video3: number;
+  reminderLevel2Video3: number;
+  reminderLevel3Video3: number;
+  
   // Напоминания (старая система для других этапов)
   video1ReminderSent: number;
   paymentReminderSent: number;
@@ -179,6 +184,9 @@ export class StatsService {
     reminderLevel1Video2: number;
     reminderLevel2Video2: number;
     reminderLevel3Video2: number;
+    reminderLevel1Video3: number;
+    reminderLevel2Video3: number;
+    reminderLevel3Video3: number;
   }> {
     try {
       const video1Reminders = await AppDataSource.query(
@@ -229,6 +237,17 @@ export class StatsService {
       const reminderLevel3Video2Count = await AppDataSource.query(
         `SELECT COUNT(*) as count FROM users WHERE "reminderLevel3Video2" = true`
       );
+      
+      // Новая система VIDEO3
+      const reminderLevel1Video3Count = await AppDataSource.query(
+        `SELECT COUNT(*) as count FROM users WHERE "reminderLevel1Video3" = true`
+      );
+      const reminderLevel2Video3Count = await AppDataSource.query(
+        `SELECT COUNT(*) as count FROM users WHERE "reminderLevel2Video3" = true`
+      );
+      const reminderLevel3Video3Count = await AppDataSource.query(
+        `SELECT COUNT(*) as count FROM users WHERE "reminderLevel3Video3" = true`
+      );
 
       return {
         video1: parseInt(video1Reminders[0]?.count || '0'),
@@ -245,6 +264,9 @@ export class StatsService {
         reminderLevel1Video2: parseInt(reminderLevel1Video2Count[0]?.count || '0'),
         reminderLevel2Video2: parseInt(reminderLevel2Video2Count[0]?.count || '0'),
         reminderLevel3Video2: parseInt(reminderLevel3Video2Count[0]?.count || '0'),
+        reminderLevel1Video3: parseInt(reminderLevel1Video3Count[0]?.count || '0'),
+        reminderLevel2Video3: parseInt(reminderLevel2Video3Count[0]?.count || '0'),
+        reminderLevel3Video3: parseInt(reminderLevel3Video3Count[0]?.count || '0'),
       };
     } catch (error) {
       console.error('Ошибка получения статистики напоминаний:', error);
@@ -263,6 +285,9 @@ export class StatsService {
         reminderLevel1Video2: 0,
         reminderLevel2Video2: 0,
         reminderLevel3Video2: 0,
+        reminderLevel1Video3: 0,
+        reminderLevel2Video3: 0,
+        reminderLevel3Video3: 0,
       };
     }
   }
@@ -353,6 +378,11 @@ export class StatsService {
         reminderLevel2Video2: reminders.reminderLevel2Video2,
         reminderLevel3Video2: reminders.reminderLevel3Video2,
         
+        // Новая система VIDEO3
+        reminderLevel1Video3: reminders.reminderLevel1Video3,
+        reminderLevel2Video3: reminders.reminderLevel2Video3,
+        reminderLevel3Video3: reminders.reminderLevel3Video3,
+        
         // Напоминания
         video1ReminderSent: reminders.video1,
         paymentReminderSent: reminders.paymentChoice,
@@ -397,6 +427,9 @@ export class StatsService {
       newReminderLevel1Video2: number;
       newReminderLevel2Video2: number;
       newReminderLevel3Video2: number;
+      newReminderLevel1Video3: number;
+      newReminderLevel2Video3: number;
+      newReminderLevel3Video3: number;
       newVideo1Reminders: number;
       newPaymentReminders: number;
       newReceiptReminders: number;
@@ -452,6 +485,9 @@ export class StatsService {
         newReminderLevel1Video2: reminders.reminderLevel1Video2 - lastSnapshot.reminderLevel1Video2,
         newReminderLevel2Video2: reminders.reminderLevel2Video2 - lastSnapshot.reminderLevel2Video2,
         newReminderLevel3Video2: reminders.reminderLevel3Video2 - lastSnapshot.reminderLevel3Video2,
+        newReminderLevel1Video3: reminders.reminderLevel1Video3 - lastSnapshot.reminderLevel1Video3,
+        newReminderLevel2Video3: reminders.reminderLevel2Video3 - lastSnapshot.reminderLevel2Video3,
+        newReminderLevel3Video3: reminders.reminderLevel3Video3 - lastSnapshot.reminderLevel3Video3,
         newVideo1Reminders: reminders.video1 - lastSnapshot.video1ReminderSent,
         newPaymentReminders: reminders.paymentChoice - lastSnapshot.paymentReminderSent,
         newReceiptReminders: reminders.receipt - lastSnapshot.receiptReminderSent,

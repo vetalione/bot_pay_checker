@@ -84,6 +84,16 @@ export class User {
   @Column({ type: 'boolean', default: false })
   reminderLevel3Video2: boolean;
 
+  // Новая система напоминаний - 3 уровня для VIDEO3
+  @Column({ type: 'boolean', default: false })
+  reminderLevel1Video3: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  reminderLevel2Video3: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  reminderLevel3Video3: boolean;
+
   // Timestamp когда пользователь перешел на текущий currentStep
   @Column({ type: 'timestamp', nullable: true })
   currentStepChangedAt?: Date;
