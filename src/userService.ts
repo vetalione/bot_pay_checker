@@ -33,6 +33,9 @@ export class UserService {
         reminderLevel1Video1: false,
         reminderLevel2Video1: false,
         reminderLevel3Video1: false,
+        reminderLevel1Video2: false,
+        reminderLevel2Video2: false,
+        reminderLevel3Video2: false,
       });
       await this.userRepository.save(user);
       console.log(`👤 Новый пользователь создан: ${userId} (@${username})`);

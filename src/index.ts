@@ -597,6 +597,51 @@ bot.action('video1_skip_to_payment', async (ctx) => {
   );
 });
 
+// Callback: video2_skip_to_payment - переход из video2 на payment_choice
+bot.action('video2_skip_to_payment', async (ctx) => {
+  const userId = ctx.from.id;
+  const state = userStates.get(userId) || { 
+    step: 'video2',
+    userId,
+    username: ctx.from.username
+  };
+
+  await ctx.answerCbQuery();
+
+  // Track skip to payment from video2
+  await trackUserAction(userService, ctx, 'video2_skip_to_payment', 'payment_choice');
+  
+  state.step = 'payment_choice';
+  userStates.set(userId, state);
+
+  // Обновляем шаг и отмечаем время показа выбора оплаты
+  await updateUserStep(userService, userId, 'payment_choice');
+  await userService.markPaymentChoiceShown(userId);
+
+  await ctx.reply(
+    '💎 Отлично! Выберите удобный способ оплаты:',
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '💵 Оплатить рублями (2000 ₽)', callback_data: 'pay_rub_tribute' }],
+          [{ text: '💳 Иностранные карты (22€)', callback_data: 'pay_eur_tribute' }],
+          [{ text: '💴 Оплатить гривнами (1050 ₴)', callback_data: 'pay_uah' }]
+        ]
+      }
+    }
+  );
+});
+
+// Callback: not_interested - аналитика (пользователь не заинтересован)
+bot.action('not_interested', async (ctx) => {
+  await ctx.answerCbQuery('Спасибо за обратную связь');
+  
+  // Track disinterest for analytics
+  await trackUserAction(userService, ctx, 'not_interested', ctx.from.id.toString());
+  
+  await ctx.reply('Понял, спасибо что уделили время. Если передумаешь — я всегда на связи! 😊');
+});
+
 // Обработка кнопки Black Friday "Забрать доступ за $25"
 bot.action('black_friday_payment', async (ctx) => {
   const userId = ctx.from.id;
