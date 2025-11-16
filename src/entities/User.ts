@@ -134,6 +134,13 @@ export class User {
   @Column({ type: 'timestamp', nullable: true })
   currentStepChangedAt?: Date;
 
+  // Пользователь заблокировал бота
+  @Column({ type: 'boolean', default: false })
+  blockedBot: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  blockedAt?: Date;
+
   @CreateDateColumn()
   createdAt: Date;
 

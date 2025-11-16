@@ -30,6 +30,7 @@ export async function statsCommand(ctx: Context) {
       totalUsers,
       totalPaid,
       avgTimeToPayment,
+      blockedStats,
       delta
     ] = await Promise.all([
       // Распределение по currentStep
@@ -87,6 +88,19 @@ export async function statsCommand(ctx: Context) {
         FROM users
         WHERE "hasPaid" = true AND "paidAt" IS NOT NULL
       `),
+      // Статистика заблокированных по этапам
+      AppDataSource.query(`
+        SELECT 
+          COUNT(*) as total,
+          COUNT(*) FILTER (WHERE "currentStep" = 'start') as blocked_start,
+          COUNT(*) FILTER (WHERE "currentStep" = 'video1') as blocked_video1,
+          COUNT(*) FILTER (WHERE "currentStep" = 'video2') as blocked_video2,
+          COUNT(*) FILTER (WHERE "currentStep" = 'video3') as blocked_video3,
+          COUNT(*) FILTER (WHERE "currentStep" = 'payment_choice') as blocked_payment_choice,
+          COUNT(*) FILTER (WHERE "currentStep" = 'waiting_receipt') as blocked_waiting_receipt
+        FROM users
+        WHERE "blockedBot" = true
+      `),
       // Дельта
       statsService.getDelta()
     ]);
@@ -106,6 +120,7 @@ export async function statsCommand(ctx: Context) {
 
     const total = parseInt(totalUsers[0].count);
     const paid = parseInt(totalPaid[0].count);
+    const blockedTotal = parseInt(blockedStats[0]?.total || '0');
     const conversionRate = total > 0 ? ((paid / total) * 100).toFixed(1) : '0.0';
     
     const avgHours = parseFloat(avgTimeToPayment[0]?.avg_hours || '0');
@@ -119,29 +134,38 @@ export async function statsCommand(ctx: Context) {
     // ПОЛЬЗОВАТЕЛИ
     const deltaUsers = delta && delta.hasChanges ? delta.changes.newUsers : 0;
     const deltaPaid = delta && delta.hasChanges ? delta.changes.newPayments : 0;
+    const deltaBlocked = delta && delta.hasChanges ? delta.changes.newBlockedUsers : 0;
     
     message += '<b>👥 ПОЛЬЗОВАТЕЛИ</b>\n';
-    message += `Всего: ${total}`;
+    message += `├─ Всего: ${total}`;
     if (deltaUsers !== 0) message += ` (${deltaUsers > 0 ? '+' : ''}${deltaUsers})`;
-    message += ` | Оплатили: ${paid}`;
+    message += '\n';
+    message += `├─ Купили: ${paid}`;
     if (deltaPaid !== 0) message += ` (${deltaPaid > 0 ? '+' : ''}${deltaPaid})`;
-    message += ` | Конверсия: ${conversionRate}%\n\n`;
+    message += '\n';
+    message += `├─ Заблокировали: ${blockedTotal}`;
+    if (deltaBlocked !== 0) message += ` (${deltaBlocked > 0 ? '+' : ''}${deltaBlocked})`;
+    message += '\n';
+    message += `└─ Конверсия: ${conversionRate}%\n\n`;
 
     // ВОРОНКА
-    message += '<b>📍 ВОРОНКА</b> (текущее / дельта)\n';
+    message += '<b>📍 ВОРОНКА</b> (активные / дельта / [🚫заблокировано])\n';
     
     const steps = [
-      { icon: '🚀', name: 'start', count: getStepCount('start'), key: 'currentStepStart' },
-      { icon: '📹', name: 'video1', count: getStepCount('video1'), key: 'currentStepVideo1' },
-      { icon: '📹', name: 'video2', count: getStepCount('video2'), key: 'currentStepVideo2' },
-      { icon: '📹', name: 'video3', count: getStepCount('video3'), key: 'currentStepVideo3' },
-      { icon: '💳', name: 'payment_choice', count: getStepCount('payment_choice'), key: 'currentStepPaymentChoice' },
-      { icon: '💳', name: 'waiting_receipt', count: getStepCount('waiting_receipt'), key: 'currentStepWaitingReceipt' },
-      { icon: '✅', name: 'completed', count: getStepCount('completed'), key: 'currentStepCompleted' }
+      { icon: '🚀', name: 'start', count: getStepCount('start'), key: 'currentStepStart', blockedKey: 'blocked_start' },
+      { icon: '📹', name: 'video1', count: getStepCount('video1'), key: 'currentStepVideo1', blockedKey: 'blocked_video1' },
+      { icon: '📹', name: 'video2', count: getStepCount('video2'), key: 'currentStepVideo2', blockedKey: 'blocked_video2' },
+      { icon: '📹', name: 'video3', count: getStepCount('video3'), key: 'currentStepVideo3', blockedKey: 'blocked_video3' },
+      { icon: '💳', name: 'payment_choice', count: getStepCount('payment_choice'), key: 'currentStepPaymentChoice', blockedKey: 'blocked_payment_choice' },
+      { icon: '💳', name: 'waiting_receipt', count: getStepCount('waiting_receipt'), key: 'currentStepWaitingReceipt', blockedKey: 'blocked_waiting_receipt' },
+      { icon: '✅', name: 'completed', count: getStepCount('completed'), key: 'currentStepCompleted', blockedKey: null }
     ];
 
     for (const step of steps) {
-      message += `├─ ${step.icon} ${step.name}: ${step.count} чел`;
+      const blockedCount = step.blockedKey ? parseInt(blockedStats[0]?.[step.blockedKey] || '0') : 0;
+      const activeCount = step.count - blockedCount;
+      
+      message += `├─ ${step.icon} ${step.name}: ${activeCount} чел`;
       
       if (delta && delta.hasChanges && delta.lastSnapshot) {
         const lastCount = (delta.lastSnapshot as any)[step.key] || 0;
@@ -149,6 +173,10 @@ export async function statsCommand(ctx: Context) {
         if (deltaCount !== 0) {
           message += ` (${deltaCount > 0 ? '+' : ''}${deltaCount})`;
         }
+      }
+      
+      if (blockedCount > 0) {
+        message += ` [🚫${blockedCount}]`;
       }
       
       message += '\n';

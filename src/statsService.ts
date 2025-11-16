@@ -7,6 +7,7 @@ interface StatsSnapshot {
   timestamp: Date;
   totalUsers: number;
   successfulPayments: number;
+  blockedUsers: number;
   
   // Старые поля (legacy, оставляем для совместимости)
   stuckAtStart: number;
@@ -26,6 +27,14 @@ interface StatsSnapshot {
   currentStepPaymentChoice: number;
   currentStepWaitingReceipt: number;
   currentStepCompleted: number;
+  
+  // Заблокированные по этапам
+  blockedAtStart: number;
+  blockedAtVideo1: number;
+  blockedAtVideo2: number;
+  blockedAtVideo3: number;
+  blockedAtPaymentChoice: number;
+  blockedAtWaitingReceipt: number;
   
   // Новая система напоминаний START (3 уровня)
   reminderLevel1Start: number;
@@ -319,10 +328,27 @@ export class StatsService {
         return parseInt(found?.count || '0');
       };
 
+      // Получаем статистику по заблокированным
+      const blockedStats = await AppDataSource.query(`
+        SELECT 
+          COUNT(*) as total,
+          COUNT(*) FILTER (WHERE "currentStep" = 'start') as blocked_start,
+          COUNT(*) FILTER (WHERE "currentStep" = 'video1') as blocked_video1,
+          COUNT(*) FILTER (WHERE "currentStep" = 'video2') as blocked_video2,
+          COUNT(*) FILTER (WHERE "currentStep" = 'video3') as blocked_video3,
+          COUNT(*) FILTER (WHERE "currentStep" = 'payment_choice') as blocked_payment_choice,
+          COUNT(*) FILTER (WHERE "currentStep" = 'waiting_receipt') as blocked_waiting_receipt
+        FROM users
+        WHERE "blockedBot" = true
+      `);
+
+      const blocked = blockedStats[0] || {};
+
       lastSnapshot = {
         timestamp: new Date(),
         totalUsers: stats.total_users_started,
         successfulPayments: stats.total_successful_payments,
+        blockedUsers: parseInt(blocked.total || '0'),
         
         // Legacy поля
         stuckAtStart: steps.stuck_at_start,
@@ -342,6 +368,14 @@ export class StatsService {
         currentStepPaymentChoice: getStepCount('payment_choice'),
         currentStepWaitingReceipt: getStepCount('waiting_receipt'),
         currentStepCompleted: getStepCount('completed'),
+        
+        // Заблокированные по этапам
+        blockedAtStart: parseInt(blocked.blocked_start || '0'),
+        blockedAtVideo1: parseInt(blocked.blocked_video1 || '0'),
+        blockedAtVideo2: parseInt(blocked.blocked_video2 || '0'),
+        blockedAtVideo3: parseInt(blocked.blocked_video3 || '0'),
+        blockedAtPaymentChoice: parseInt(blocked.blocked_payment_choice || '0'),
+        blockedAtWaitingReceipt: parseInt(blocked.blocked_waiting_receipt || '0'),
         
         // Новая система START
         reminderLevel1Start: reminders.reminderLevel1Start,
@@ -388,6 +422,7 @@ export class StatsService {
     changes: {
       newUsers: number;
       newPayments: number;
+      newBlockedUsers: number;
       stuckAtStart: number;
       stuckAtVideo1: number;
       stuckAtVideo2: number;
@@ -441,9 +476,16 @@ export class StatsService {
         timeSinceLastCheck = `${diffMinutes}м`;
       }
 
+      // Получаем текущее количество заблокированных
+      const currentBlocked = await AppDataSource.query(`
+        SELECT COUNT(*) as total FROM users WHERE "blockedBot" = true
+      `);
+      const blockedCount = parseInt(currentBlocked[0]?.total || '0');
+
       const changes = {
         newUsers: stats.total_users_started - lastSnapshot.totalUsers,
         newPayments: stats.total_successful_payments - lastSnapshot.successfulPayments,
+        newBlockedUsers: blockedCount - lastSnapshot.blockedUsers,
         stuckAtStart: steps.stuck_at_start - lastSnapshot.stuckAtStart,
         stuckAtVideo1: steps.stuck_at_video1 - lastSnapshot.stuckAtVideo1,
         stuckAtVideo2: steps.stuck_at_video2 - lastSnapshot.stuckAtVideo2,
