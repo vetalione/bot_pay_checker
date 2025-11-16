@@ -27,10 +27,6 @@ interface StatsSnapshot {
   currentStepWaitingReceipt: number;
   currentStepCompleted: number;
   
-  // Автодогрев (старое поле оставляем для обратной совместимости)
-  warmupStartSent: number;
-  warmupVideo1Sent: number;
-  
   // Новая система напоминаний START (3 уровня)
   reminderLevel1Start: number;
   reminderLevel2Start: number;
@@ -173,8 +169,6 @@ export class StatsService {
     video1: number;
     paymentChoice: number;
     receipt: number;
-    warmupStart: number;
-    warmupVideo1: number;
     reminderLevel1Start: number;
     reminderLevel2Start: number;
     reminderLevel3Start: number;
@@ -197,12 +191,6 @@ export class StatsService {
       );
       const receiptReminders = await AppDataSource.query(
         `SELECT COUNT(*) as count FROM users WHERE "receiptReminderSent" = true`
-      );
-      const warmupStartCount = await AppDataSource.query(
-        `SELECT COUNT(*) as count FROM users WHERE "warmupStartSent" = true`
-      );
-      const warmupVideo1Count = await AppDataSource.query(
-        `SELECT COUNT(*) as count FROM users WHERE "warmupVideo1Sent" = true`
       );
       
       // Новая система START
@@ -253,8 +241,6 @@ export class StatsService {
         video1: parseInt(video1Reminders[0]?.count || '0'),
         paymentChoice: parseInt(paymentChoiceReminders[0]?.count || '0'),
         receipt: parseInt(receiptReminders[0]?.count || '0'),
-        warmupStart: parseInt(warmupStartCount[0]?.count || '0'),
-        warmupVideo1: parseInt(warmupVideo1Count[0]?.count || '0'),
         reminderLevel1Start: parseInt(reminderLevel1StartCount[0]?.count || '0'),
         reminderLevel2Start: parseInt(reminderLevel2StartCount[0]?.count || '0'),
         reminderLevel3Start: parseInt(reminderLevel3StartCount[0]?.count || '0'),
@@ -273,9 +259,7 @@ export class StatsService {
       return { 
         video1: 0, 
         paymentChoice: 0, 
-        receipt: 0, 
-        warmupStart: 0, 
-        warmupVideo1: 0,
+        receipt: 0,
         reminderLevel1Start: 0,
         reminderLevel2Start: 0,
         reminderLevel3Start: 0,
@@ -359,10 +343,6 @@ export class StatsService {
         currentStepWaitingReceipt: getStepCount('waiting_receipt'),
         currentStepCompleted: getStepCount('completed'),
         
-        // Автодогрев
-        warmupStartSent: reminders.warmupStart,
-        warmupVideo1Sent: reminders.warmupVideo1,
-        
         // Новая система START
         reminderLevel1Start: reminders.reminderLevel1Start,
         reminderLevel2Start: reminders.reminderLevel2Start,
@@ -416,8 +396,6 @@ export class StatsService {
       chosePaymentNoReceipt: number;
       receiptRejected: number;
       newTributeClicks: number;
-      newWarmupStartSent: number;
-      newWarmupVideo1Sent: number;
       newReminderLevel1Start: number;
       newReminderLevel2Start: number;
       newReminderLevel3Start: number;
@@ -474,8 +452,6 @@ export class StatsService {
         chosePaymentNoReceipt: steps.chose_payment_no_receipt - lastSnapshot.chosePaymentNoReceipt,
         receiptRejected: steps.receipt_rejected - lastSnapshot.receiptRejected,
         newTributeClicks: tributeClicks.total - lastSnapshot.tributeClicksTotal,
-        newWarmupStartSent: reminders.warmupStart - lastSnapshot.warmupStartSent,
-        newWarmupVideo1Sent: reminders.warmupVideo1 - lastSnapshot.warmupVideo1Sent,
         newReminderLevel1Start: reminders.reminderLevel1Start - lastSnapshot.reminderLevel1Start,
         newReminderLevel2Start: reminders.reminderLevel2Start - lastSnapshot.reminderLevel2Start,
         newReminderLevel3Start: reminders.reminderLevel3Start - lastSnapshot.reminderLevel3Start,
