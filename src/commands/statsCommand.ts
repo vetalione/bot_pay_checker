@@ -190,9 +190,9 @@ export async function statsCommand(ctx: Context) {
     const reminderLevel3Start = parseInt(newStartReminderCounts[0]?.reminder_level3_start || '0') || 0;
     const totalStartReminders = reminderLevel1Start + reminderLevel2Start + reminderLevel3Start;
     
-    const deltaLevel1Start = delta && delta.hasChanges && delta.changes.newReminderLevel1Start ? delta.changes.newReminderLevel1Start : 0;
-    const deltaLevel2Start = delta && delta.hasChanges && delta.changes.newReminderLevel2Start ? delta.changes.newReminderLevel2Start : 0;
-    const deltaLevel3Start = delta && delta.hasChanges && delta.changes.newReminderLevel3Start ? delta.changes.newReminderLevel3Start : 0;
+    const deltaLevel1Start = delta?.changes?.newReminderLevel1Start ?? 0;
+    const deltaLevel2Start = delta?.changes?.newReminderLevel2Start ?? 0;
+    const deltaLevel3Start = delta?.changes?.newReminderLevel3Start ?? 0;
     const deltaTotalStart = deltaLevel1Start + deltaLevel2Start + deltaLevel3Start;
 
     message += '<b>⚡️ НАПОМИНАНИЯ START</b> (3 уровня)\n';
@@ -215,9 +215,9 @@ export async function statsCommand(ctx: Context) {
     const reminderLevel3Video1 = parseInt(newVideo1ReminderCounts[0]?.reminder_level3_video1 || '0') || 0;
     const totalVideo1Reminders = reminderLevel1Video1 + reminderLevel2Video1 + reminderLevel3Video1;
     
-    const deltaLevel1Video1 = delta && delta.hasChanges && delta.changes.newReminderLevel1Video1 ? delta.changes.newReminderLevel1Video1 : 0;
-    const deltaLevel2Video1 = delta && delta.hasChanges && delta.changes.newReminderLevel2Video1 ? delta.changes.newReminderLevel2Video1 : 0;
-    const deltaLevel3Video1 = delta && delta.hasChanges && delta.changes.newReminderLevel3Video1 ? delta.changes.newReminderLevel3Video1 : 0;
+    const deltaLevel1Video1 = delta?.changes?.newReminderLevel1Video1 ?? 0;
+    const deltaLevel2Video1 = delta?.changes?.newReminderLevel2Video1 ?? 0;
+    const deltaLevel3Video1 = delta?.changes?.newReminderLevel3Video1 ?? 0;
     const deltaTotalVideo1 = deltaLevel1Video1 + deltaLevel2Video1 + deltaLevel3Video1;
 
     message += '<b>⚡️ НАПОМИНАНИЯ VIDEO1</b> (3 уровня)\n';
@@ -240,9 +240,9 @@ export async function statsCommand(ctx: Context) {
     const reminderLevel3Video2 = parseInt(newVideo2ReminderCounts[0]?.reminder_level3_video2 || '0') || 0;
     const totalVideo2Reminders = reminderLevel1Video2 + reminderLevel2Video2 + reminderLevel3Video2;
     
-    const deltaLevel1Video2 = delta && delta.hasChanges && delta.changes.newReminderLevel1Video2 ? delta.changes.newReminderLevel1Video2 : 0;
-    const deltaLevel2Video2 = delta && delta.hasChanges && delta.changes.newReminderLevel2Video2 ? delta.changes.newReminderLevel2Video2 : 0;
-    const deltaLevel3Video2 = delta && delta.hasChanges && delta.changes.newReminderLevel3Video2 ? delta.changes.newReminderLevel3Video2 : 0;
+    const deltaLevel1Video2 = delta?.changes?.newReminderLevel1Video2 ?? 0;
+    const deltaLevel2Video2 = delta?.changes?.newReminderLevel2Video2 ?? 0;
+    const deltaLevel3Video2 = delta?.changes?.newReminderLevel3Video2 ?? 0;
     const deltaTotalVideo2 = deltaLevel1Video2 + deltaLevel2Video2 + deltaLevel3Video2;
 
     message += '<b>⚡️ НАПОМИНАНИЯ VIDEO2</b> (3 уровня)\n';
@@ -265,9 +265,9 @@ export async function statsCommand(ctx: Context) {
     const reminderLevel3Video3 = parseInt(newVideo3ReminderCounts[0]?.reminder_level3_video3 || '0') || 0;
     const totalVideo3Reminders = reminderLevel1Video3 + reminderLevel2Video3 + reminderLevel3Video3;
     
-    const deltaLevel1Video3 = delta && delta.hasChanges && delta.changes.newReminderLevel1Video3 ? delta.changes.newReminderLevel1Video3 : 0;
-    const deltaLevel2Video3 = delta && delta.hasChanges && delta.changes.newReminderLevel2Video3 ? delta.changes.newReminderLevel2Video3 : 0;
-    const deltaLevel3Video3 = delta && delta.hasChanges && delta.changes.newReminderLevel3Video3 ? delta.changes.newReminderLevel3Video3 : 0;
+    const deltaLevel1Video3 = delta?.changes?.newReminderLevel1Video3 ?? 0;
+    const deltaLevel2Video3 = delta?.changes?.newReminderLevel2Video3 ?? 0;
+    const deltaLevel3Video3 = delta?.changes?.newReminderLevel3Video3 ?? 0;
     const deltaTotalVideo3 = deltaLevel1Video3 + deltaLevel2Video3 + deltaLevel3Video3;
 
     message += '<b>⚡️ НАПОМИНАНИЯ VIDEO3</b> (3 уровня)\n';
