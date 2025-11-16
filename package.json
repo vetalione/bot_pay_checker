@@ -18,6 +18,8 @@
     "broadcast-bf": "ts-node broadcast_black_friday.ts",
     "broadcast-bf-day2": "ts-node broadcast_black_friday_day2.ts",
     "broadcast-bf-day2-send": "ts-node broadcast_black_friday_day2.ts --send",
+    "broadcast-bf-day3": "ts-node broadcast_black_friday_day3.ts",
+    "broadcast-bf-day3-send": "ts-node broadcast_black_friday_day3.ts --send",
     "test-bf": "ts-node test_broadcast_bf.ts"
   },
   "keywords": [
