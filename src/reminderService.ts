@@ -75,6 +75,17 @@ export class ReminderService {
   private async markUserAsBlocked(userId: number): Promise<void> {
     try {
       const userRepository = AppDataSource.getRepository(User);
+      
+      // Проверяем, не помечен ли пользователь уже
+      const user = await userRepository.findOne({ 
+        where: { userId }, 
+        select: ['blockedBot'] 
+      });
+      
+      if (user?.blockedBot) {
+        return; // Уже помечен, ничего не делаем
+      }
+      
       await userRepository.update(
         { userId },
         { 
@@ -1042,7 +1053,8 @@ export class ReminderService {
         currentStep: 'payment_choice',
         currency: null as any, // Еще не выбрали валюту
         paymentReminderSent: false,
-        paymentChoiceShownAt: MoreThan(new Date(0)) // Проверяем что поле установлено
+        paymentChoiceShownAt: MoreThan(new Date(0)), // Проверяем что поле установлено
+        blockedBot: false // Исключаем заблокировавших бота
       }
     });
 
@@ -1071,7 +1083,8 @@ export class ReminderService {
         currentStep: 'waiting_receipt',
         currency: 'RUB',
         receiptReminderSent: false,
-        waitingReceiptSince: MoreThan(new Date(0))
+        waitingReceiptSince: MoreThan(new Date(0)),
+        blockedBot: false // Исключаем заблокировавших бота
       }
     });
 
