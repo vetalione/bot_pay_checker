@@ -70,6 +70,36 @@ export class ReminderService {
   }
 
   /**
+   * Помечает пользователя как заблокировавшего бота
+   */
+  private async markUserAsBlocked(userId: number): Promise<void> {
+    try {
+      const userRepository = AppDataSource.getRepository(User);
+      await userRepository.update(
+        { userId },
+        { 
+          blockedBot: true, 
+          blockedAt: new Date() 
+        }
+      );
+      console.log(`🚫 Пользователь ${userId} заблокировал бота. Помечен в БД, больше не будем отправлять сообщения.`);
+    } catch (error: any) {
+      console.error(`❌ Ошибка при маркировке пользователя ${userId} как заблокированного:`, error.message);
+    }
+  }
+
+  /**
+   * Проверяет, является ли ошибка блокировкой бота пользователем
+   */
+  private isBlockedByUserError(error: any): boolean {
+    return error && 
+           error.response && 
+           error.response.error_code === 403 && 
+           error.response.description && 
+           error.response.description.includes('bot was blocked by the user');
+  }
+
+  /**
    * Запуск фонового процесса проверки напоминаний
    */
   start() {
@@ -144,6 +174,7 @@ export class ReminderService {
         currentStep: 'start',
         hasPaid: false,
         reminderLevel1Start: false,
+        blockedBot: false,
       }
     });
 
@@ -170,7 +201,8 @@ export class ReminderService {
        AND "reminderLevel1Start" = true 
        AND "reminderLevel2Start" = false
        AND "reminderLevel1StartSentAt" IS NOT NULL
-       AND "reminderLevel1StartSentAt" <= $1`,
+       AND "reminderLevel1StartSentAt" <= $1
+       AND ("blockedBot" = false OR "blockedBot" IS NULL)`,
       [oneHourAgo]
     );
 
@@ -196,7 +228,8 @@ export class ReminderService {
        AND "reminderLevel2Start" = true 
        AND "reminderLevel3Start" = false
        AND "reminderLevel2StartSentAt" IS NOT NULL
-       AND "reminderLevel2StartSentAt" <= $1`,
+       AND "reminderLevel2StartSentAt" <= $1
+       AND ("blockedBot" = false OR "blockedBot" IS NULL)`,
       [twentyFourHoursAgo]
     );
 
@@ -241,6 +274,12 @@ export class ReminderService {
 
       console.log(`✅ START Level 1 отправлен пользователю ${user.userId}`);
     } catch (error: any) {
+      // Проверяем, заблокировал ли пользователь бота
+      if (this.isBlockedByUserError(error)) {
+        await this.markUserAsBlocked(user.userId);
+        return;
+      }
+      
       console.error(`❌ Ошибка отправки START Level 1 пользователю ${user.userId}:`, error.message);
     }
   }
@@ -275,6 +314,12 @@ export class ReminderService {
 
       console.log(`✅ START Level 2 отправлен пользователю ${user.userId}`);
     } catch (error: any) {
+      // Проверяем, заблокировал ли пользователь бота
+      if (this.isBlockedByUserError(error)) {
+        await this.markUserAsBlocked(user.userId);
+        return;
+      }
+      
       console.error(`❌ Ошибка отправки START Level 2 пользователю ${user.userId}:`, error.message);
     }
   }
@@ -313,6 +358,12 @@ export class ReminderService {
 
       console.log(`✅ START Level 3 отправлен пользователю ${user.userId}`);
     } catch (error: any) {
+      // Проверяем, заблокировал ли пользователь бота
+      if (this.isBlockedByUserError(error)) {
+        await this.markUserAsBlocked(user.userId);
+        return;
+      }
+      
       console.error(`❌ Ошибка отправки START Level 3 пользователю ${user.userId}:`, error.message);
     }
   }
@@ -333,6 +384,7 @@ export class ReminderService {
         currentStep: 'video1',
         hasPaid: false,
         reminderLevel1Video1: false,
+        blockedBot: false,
       }
     });
 
@@ -360,6 +412,7 @@ export class ReminderService {
         AND "reminderLevel2Video1" = false
         AND "reminderLevel1Video1SentAt" IS NOT NULL
         AND "reminderLevel1Video1SentAt" <= $1
+        AND ("blockedBot" = false OR "blockedBot" IS NULL)
     `, [oneHourAgo]) as User[];
 
     console.log(`📊 VIDEO1 Level 2: найдено ${usersToRemind.length} пользователей (>1ч после L1)`);
@@ -384,6 +437,7 @@ export class ReminderService {
         AND "reminderLevel3Video1" = false
         AND "reminderLevel2Video1SentAt" IS NOT NULL
         AND "reminderLevel2Video1SentAt" <= $1
+        AND ("blockedBot" = false OR "blockedBot" IS NULL)
     `, [twentyFourHoursAgo]) as User[];
 
     console.log(`📊 VIDEO1 Level 3: найдено ${usersToRemind.length} пользователей (>24ч после L2)`);
@@ -429,6 +483,12 @@ export class ReminderService {
 
       console.log(`✅ VIDEO1 Level 1 отправлен пользователю ${user.userId}`);
     } catch (error: any) {
+      // Проверяем, заблокировал ли пользователь бота
+      if (this.isBlockedByUserError(error)) {
+        await this.markUserAsBlocked(user.userId);
+        return;
+      }
+      
       console.error(`❌ Ошибка отправки VIDEO1 Level 1 пользователю ${user.userId}:`, error.message);
     }
   }
@@ -465,6 +525,12 @@ export class ReminderService {
 
       console.log(`✅ VIDEO1 Level 2 отправлен пользователю ${user.userId}`);
     } catch (error: any) {
+      // Проверяем, заблокировал ли пользователь бота
+      if (this.isBlockedByUserError(error)) {
+        await this.markUserAsBlocked(user.userId);
+        return;
+      }
+      
       console.error(`❌ Ошибка отправки VIDEO1 Level 2 пользователю ${user.userId}:`, error.message);
     }
   }
@@ -503,6 +569,12 @@ export class ReminderService {
 
       console.log(`✅ VIDEO1 Level 3 отправлен пользователю ${user.userId}`);
     } catch (error: any) {
+      // Проверяем, заблокировал ли пользователь бота
+      if (this.isBlockedByUserError(error)) {
+        await this.markUserAsBlocked(user.userId);
+        return;
+      }
+      
       console.error(`❌ Ошибка отправки VIDEO1 Level 3 пользователю ${user.userId}:`, error.message);
     }
   }
@@ -523,6 +595,7 @@ export class ReminderService {
         currentStep: 'video2',
         hasPaid: false,
         reminderLevel1Video2: false,
+        blockedBot: false,
       }
     });
 
@@ -550,6 +623,7 @@ export class ReminderService {
         AND "reminderLevel2Video2" = false
         AND "reminderLevel1Video2SentAt" IS NOT NULL
         AND "reminderLevel1Video2SentAt" <= $1
+        AND ("blockedBot" = false OR "blockedBot" IS NULL)
     `, [oneHourAgo]) as User[];
 
     console.log(`📊 VIDEO2 Level 2: найдено ${usersToRemind.length} пользователей (>1ч после L1)`);
@@ -574,6 +648,7 @@ export class ReminderService {
         AND "reminderLevel3Video2" = false
         AND "reminderLevel2Video2SentAt" IS NOT NULL
         AND "reminderLevel2Video2SentAt" <= $1
+        AND ("blockedBot" = false OR "blockedBot" IS NULL)
     `, [twentyFourHoursAgo]) as User[];
 
     console.log(`📊 VIDEO2 Level 3: найдено ${usersToRemind.length} пользователей (>24ч после L2)`);
@@ -617,6 +692,12 @@ export class ReminderService {
 
       console.log(`✅ VIDEO2 Level 1 отправлен пользователю ${user.userId}`);
     } catch (error: any) {
+      // Проверяем, заблокировал ли пользователь бота
+      if (this.isBlockedByUserError(error)) {
+        await this.markUserAsBlocked(user.userId);
+        return;
+      }
+      
       console.error(`❌ Ошибка отправки VIDEO2 Level 1 пользователю ${user.userId}:`, error.message);
     }
   }
@@ -651,6 +732,12 @@ export class ReminderService {
 
       console.log(`✅ VIDEO2 Level 2 отправлен пользователю ${user.userId}`);
     } catch (error: any) {
+      // Проверяем, заблокировал ли пользователь бота
+      if (this.isBlockedByUserError(error)) {
+        await this.markUserAsBlocked(user.userId);
+        return;
+      }
+      
       console.error(`❌ Ошибка отправки VIDEO2 Level 2 пользователю ${user.userId}:`, error.message);
     }
   }
@@ -695,6 +782,12 @@ export class ReminderService {
 
       console.log(`✅ VIDEO2 Level 3 отправлен пользователю ${user.userId}`);
     } catch (error: any) {
+      // Проверяем, заблокировал ли пользователь бота
+      if (this.isBlockedByUserError(error)) {
+        await this.markUserAsBlocked(user.userId);
+        return;
+      }
+      
       console.error(`❌ Ошибка отправки VIDEO2 Level 3 пользователю ${user.userId}:`, error.message);
     }
   }
@@ -719,6 +812,7 @@ export class ReminderService {
         AND "hasPaid" = false
         AND "reminderLevel1Video3" = false
         AND "currentStepChangedAt" <= $1
+        AND ("blockedBot" = false OR "blockedBot" IS NULL)
     `, [fiveMinutesAgo]) as User[];
 
     console.log(`[VIDEO3 L1] Query returned ${usersToRemind.length} users`);
@@ -746,6 +840,7 @@ export class ReminderService {
         AND "reminderLevel2Video3" = false
         AND "reminderLevel1Video3SentAt" IS NOT NULL
         AND "reminderLevel1Video3SentAt" <= $1
+        AND ("blockedBot" = false OR "blockedBot" IS NULL)
     `, [oneHourAgo]) as User[];
 
     console.log(`📊 VIDEO3 Level 2: найдено ${usersToRemind.length} пользователей (>1ч после L1)`);
@@ -770,6 +865,7 @@ export class ReminderService {
         AND "reminderLevel3Video3" = false
         AND "reminderLevel2Video3SentAt" IS NOT NULL
         AND "reminderLevel2Video3SentAt" <= $1
+        AND ("blockedBot" = false OR "blockedBot" IS NULL)
     `, [twentyFourHoursAgo]) as User[];
 
     console.log(`📊 VIDEO3 Level 3: найдено ${usersToRemind.length} пользователей (>24ч после L2)`);
@@ -823,6 +919,12 @@ export class ReminderService {
 
       console.log(`✅ VIDEO3 Level 1 отправлен пользователю ${user.userId}`);
     } catch (error: any) {
+      // Проверяем, заблокировал ли пользователь бота
+      if (this.isBlockedByUserError(error)) {
+        await this.markUserAsBlocked(user.userId);
+        return;
+      }
+      
       console.error(`❌ [VIDEO3 L1 SEND] Ошибка отправки пользователю ${user.userId}:`);
       console.error(`   Error type: ${error.constructor.name}`);
       console.error(`   Error message: ${error.message}`);
@@ -864,6 +966,12 @@ export class ReminderService {
 
       console.log(`✅ VIDEO3 Level 2 отправлен пользователю ${user.userId}`);
     } catch (error: any) {
+      // Проверяем, заблокировал ли пользователь бота
+      if (this.isBlockedByUserError(error)) {
+        await this.markUserAsBlocked(user.userId);
+        return;
+      }
+      
       console.error(`❌ Ошибка отправки VIDEO3 Level 2 пользователю ${user.userId}:`, error.message);
     }
   }
@@ -904,6 +1012,12 @@ export class ReminderService {
 
       console.log(`✅ VIDEO3 Level 3 отправлен пользователю ${user.userId}`);
     } catch (error: any) {
+      // Проверяем, заблокировал ли пользователь бота
+      if (this.isBlockedByUserError(error)) {
+        await this.markUserAsBlocked(user.userId);
+        return;
+      }
+      
       console.error(`❌ Ошибка отправки VIDEO3 Level 3 пользователю ${user.userId}:`, error.message);
     }
   }
@@ -992,7 +1106,13 @@ export class ReminderService {
       await userRepository.save(user);
 
       console.log(`✅ Напоминание о выборе оплаты отправлено пользователю ${user.userId}`);
-    } catch (error) {
+    } catch (error: any) {
+      // Проверяем, заблокировал ли пользователь бота
+      if (this.isBlockedByUserError(error)) {
+        await this.markUserAsBlocked(user.userId);
+        return;
+      }
+      
       console.error(`❌ Ошибка отправки напоминания пользователю ${user.userId}:`, error);
     }
   }
@@ -1018,7 +1138,13 @@ export class ReminderService {
       await userRepository.save(user);
 
       console.log(`✅ Напоминание о квитанции отправлено пользователю ${user.userId}`);
-    } catch (error) {
+    } catch (error: any) {
+      // Проверяем, заблокировал ли пользователь бота
+      if (this.isBlockedByUserError(error)) {
+        await this.markUserAsBlocked(user.userId);
+        return;
+      }
+      
       console.error(`❌ Ошибка отправки напоминания о квитанции пользователю ${user.userId}:`, error);
     }
   }
@@ -1091,7 +1217,13 @@ export class ReminderService {
       await userRepository.save(user);
 
       console.log(`✅ Напоминание video1 отправлено пользователю ${user.userId}`);
-    } catch (error) {
+    } catch (error: any) {
+      // Проверяем, заблокировал ли пользователь бота
+      if (this.isBlockedByUserError(error)) {
+        await this.markUserAsBlocked(user.userId);
+        return;
+      }
+      
       console.error(`❌ Ошибка отправки напоминания video1 пользователю ${user.userId}:`, error);
     }
   }
