@@ -1319,17 +1319,23 @@ async function startBot() {
     
     console.log(`✅ Автоматическая синхронизация канала настроена (каждые ${SYNC_INTERVAL_HOURS}ч)`);
 
-    // 6. Запускаем Tribute Webhook сервер
+    // 6. Запускаем Tribute Webhook сервер ПЕРВЫМ (до бота!)
+    console.log('🔄 Запуск Tribute Webhook сервера...');
     const tributeWebhook = new TributeWebhookService(bot, config.tributeApiKey);
     tributeWebhook.start(Number(PORT));
     console.log(`✅ Tribute Webhook сервер запущен на порту ${PORT}`);
+    
+    // Даем серверу время запуститься
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     // 7. Запускаем бота (Long Polling, не webhook Telegram)
+    console.log('🔄 Запуск Telegram бота...');
     await bot.launch();
 
     console.log('✅ Бот запущен успешно (Long Polling)');
     console.log(`Environment: ${process.env.NODE_ENV}`);
     console.log(`Port: ${PORT}`);
+    console.log(`📡 Webhook доступен: https://web-production-cc297.up.railway.app/webhook/tribute`);
   } catch (error) {
     console.error('❌ Ошибка запуска бота:', error);
     process.exit(1);

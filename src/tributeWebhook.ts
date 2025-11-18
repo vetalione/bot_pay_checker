@@ -58,9 +58,11 @@ export class TributeWebhookService {
 
     // Логирование всех входящих запросов
     this.app.use((req, res, next) => {
-      console.log(`📥 [${new Date().toISOString()}] ${req.method} ${req.path}`);
+      const timestamp = new Date().toISOString();
+      console.log(`📥 [${timestamp}] ${req.method} ${req.path}`);
+      console.log(`   Headers:`, JSON.stringify(req.headers, null, 2));
       if (req.body && Object.keys(req.body).length > 0) {
-        console.log('Body:', JSON.stringify(req.body, null, 2));
+        console.log(`   Body:`, JSON.stringify(req.body, null, 2));
       }
       next();
     });
@@ -221,10 +223,25 @@ ${chatInvite.invite_link}
   }
 
   public start(port: number = 3000): void {
-    this.app.listen(port, '0.0.0.0', () => {
-      console.log(`🚀 Tribute Webhook server запущен на порту ${port}`);
-      console.log(`📡 Webhook URL: http://your-railway-domain.railway.app/webhook/tribute`);
-      console.log(`🔑 API Key: ${this.apiKey.substring(0, 8)}...`);
+    const server = this.app.listen(port, '0.0.0.0', () => {
+      console.log(`\n${'='.repeat(60)}`);
+      console.log(`🚀 Tribute Webhook Server ЗАПУЩЕН`);
+      console.log(`${'='.repeat(60)}`);
+      console.log(`🌐 Host: 0.0.0.0`);
+      console.log(`🔌 Port: ${port}`);
+      console.log(`📡 Health Check: http://0.0.0.0:${port}/health`);
+      console.log(`📡 Webhook URL: http://0.0.0.0:${port}/webhook/tribute`);
+      console.log(`🔑 API Key: ${this.apiKey.substring(0, 12)}...`);
+      console.log(`${'='.repeat(60)}\n`);
+    });
+
+    server.on('error', (error: any) => {
+      if (error.code === 'EADDRINUSE') {
+        console.error(`❌ Порт ${port} уже используется!`);
+      } else {
+        console.error(`❌ Ошибка запуска сервера:`, error);
+      }
+      process.exit(1);
     });
   }
 
