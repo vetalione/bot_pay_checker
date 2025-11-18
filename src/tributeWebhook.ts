@@ -72,13 +72,34 @@ export class TributeWebhookService {
       res.json({ status: 'ok', timestamp: new Date().toISOString() });
     });
 
+    // Tribute webhook GET endpoint (для проверки доступности)
+    this.app.get('/webhook/tribute', (req, res) => {
+      res.json({ 
+        status: 'ready',
+        service: 'Tribute Webhook Handler',
+        methods: ['POST'],
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    // OPTIONS для CORS preflight
+    this.app.options('/webhook/tribute', (req, res) => {
+      res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.status(204).send();
+    });
+
     // Tribute webhook endpoint
     this.app.post('/webhook/tribute', async (req: Request, res: Response) => {
       try {
         await this.handleTributeWebhook(req, res);
       } catch (error) {
         console.error('❌ Ошибка обработки Tribute webhook:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ 
+          success: false,
+          error: 'Internal server error',
+          message: error instanceof Error ? error.message : 'Unknown error'
+        });
       }
     });
   }
@@ -88,12 +109,17 @@ export class TributeWebhookService {
 
     console.log('🔔 Получен webhook от Tribute:');
     console.log('  Event:', payload.name);
-    console.log('  Telegram User ID:', payload.payload.telegram_user_id);
-    console.log('  Currency:', payload.payload.currency?.toUpperCase());
-    console.log('  Price:', payload.payload.price);
+    console.log('  Telegram User ID:', payload.payload?.telegram_user_id);
+    console.log('  Currency:', payload.payload?.currency?.toUpperCase());
+    console.log('  Price:', payload.payload?.price);
 
     // Быстрый ответ Tribute (важно ответить быстро!)
-    res.status(200).json({ status: 'received' });
+    res.status(200).json({ 
+      success: true,
+      status: 'received',
+      event: payload.name,
+      timestamp: new Date().toISOString()
+    });
 
     // Обрабатываем платеж асинхронно
     this.processPayment(payload).catch(error => {
