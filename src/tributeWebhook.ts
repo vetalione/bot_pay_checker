@@ -1,0 +1,208 @@
+import express, { Request, Response } from 'express';
+import { Telegraf } from 'telegraf';
+import { UserService } from './userService';
+import { AppDataSource } from './database';
+import { User } from './entities/User';
+
+/**
+ * Tribute Webhook Handler
+ * Обрабатывает уведомления о платежах от Tribute API
+ */
+
+interface TributeWebhookPayload {
+  name: string; // "new_subscription"
+  created_at: string;
+  sent_at: string;
+  payload: {
+    subscription_name: string;
+    subscription_id: number;
+    period_id: number;
+    period: string; // "monthly"
+    price: number; // Цена в минорных единицах (копейках/центах)
+    amount: number; // Фактическая сумма после комиссии
+    currency: string; // "rub" | "eur" | "usd"
+    user_id: number; // ID пользователя в Tribute
+    telegram_user_id: number; // ID пользователя в Telegram
+    channel_id: number;
+    channel_name: string;
+    expires_at: string;
+  };
+}
+
+export class TributeWebhookService {
+  private app: express.Application;
+  private bot: Telegraf;
+  private userService: UserService;
+  private apiKey: string;
+
+  constructor(bot: Telegraf, apiKey: string) {
+    this.app = express();
+    this.bot = bot;
+    this.apiKey = apiKey;
+    this.userService = new UserService();
+    
+    this.setupMiddleware();
+    this.setupRoutes();
+  }
+
+  private setupMiddleware() {
+    // Parse JSON bodies
+    this.app.use(express.json());
+    
+    // CORS для Tribute
+    this.app.use((req, res, next) => {
+      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+      next();
+    });
+
+    // Логирование всех входящих запросов
+    this.app.use((req, res, next) => {
+      console.log(`📥 [${new Date().toISOString()}] ${req.method} ${req.path}`);
+      if (req.body && Object.keys(req.body).length > 0) {
+        console.log('Body:', JSON.stringify(req.body, null, 2));
+      }
+      next();
+    });
+  }
+
+  private setupRoutes() {
+    // Health check endpoint
+    this.app.get('/health', (req, res) => {
+      res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    });
+
+    // Tribute webhook endpoint
+    this.app.post('/webhook/tribute', async (req: Request, res: Response) => {
+      try {
+        await this.handleTributeWebhook(req, res);
+      } catch (error) {
+        console.error('❌ Ошибка обработки Tribute webhook:', error);
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    });
+  }
+
+  private async handleTributeWebhook(req: Request, res: Response) {
+    const payload = req.body as TributeWebhookPayload;
+
+    console.log('🔔 Получен webhook от Tribute:');
+    console.log('  Event:', payload.name);
+    console.log('  Telegram User ID:', payload.payload.telegram_user_id);
+    console.log('  Currency:', payload.payload.currency?.toUpperCase());
+    console.log('  Price:', payload.payload.price);
+
+    // Быстрый ответ Tribute (важно ответить быстро!)
+    res.status(200).json({ status: 'received' });
+
+    // Обрабатываем платеж асинхронно
+    this.processPayment(payload).catch(error => {
+      console.error('❌ Ошибка асинхронной обработки платежа:', error);
+    });
+  }
+
+  private async processPayment(payload: TributeWebhookPayload) {
+    const { telegram_user_id, currency, price } = payload.payload;
+
+    // Проверяем событие
+    if (payload.name !== 'new_subscription') {
+      console.log(`⚠️ Пропускаем событие: ${payload.name}`);
+      return;
+    }
+
+    try {
+      // Получаем пользователя из БД
+      const userRepository = AppDataSource.getRepository(User);
+      let user = await userRepository.findOne({
+        where: { userId: telegram_user_id }
+      });
+
+      if (!user) {
+        console.log(`⚠️ Пользователь ${telegram_user_id} не найден в БД. Создаем новую запись...`);
+        
+        // Создаем нового пользователя
+        user = userRepository.create({
+          userId: telegram_user_id,
+          currentStep: 'completed',
+          hasPaid: true,
+          paidAt: new Date(),
+          currency: currency.toUpperCase() as 'RUB' | 'EUR' | 'UAH',
+        });
+      } else {
+        // Обновляем существующего пользователя
+        user.hasPaid = true;
+        user.paidAt = new Date();
+        user.currentStep = 'completed';
+        user.currency = currency.toUpperCase() as 'RUB' | 'EUR' | 'UAH';
+      }
+
+      await userRepository.save(user);
+
+      console.log(`✅ Пользователь ${telegram_user_id} помечен как оплативший (${currency.toUpperCase()}, ${price})`);
+
+      // Отправляем приглашение в канал
+      await this.sendChannelInvite(telegram_user_id);
+
+    } catch (error) {
+      console.error(`❌ Ошибка обработки платежа для пользователя ${telegram_user_id}:`, error);
+      throw error;
+    }
+  }
+
+  private async sendChannelInvite(userId: number) {
+    try {
+      const channelId = process.env.CHANNEL_ID!;
+      const chatId = process.env.CHAT_ID!;
+
+      // Генерируем invite link для канала
+      const channelInvite = await this.bot.telegram.createChatInviteLink(channelId, {
+        member_limit: 1,
+        name: `User_${userId}`
+      });
+
+      // Генерируем invite link для чата
+      const chatInvite = await this.bot.telegram.createChatInviteLink(chatId, {
+        member_limit: 1,
+        name: `User_${userId}_chat`
+      });
+
+      // Отправляем сообщение пользователю
+      const message = `🎉 Поздравляем! Оплата получена!
+
+✅ Вот ваши ссылки для доступа:
+
+📢 Канал с контентом:
+${channelInvite.invite_link}
+
+💬 Чат участников:
+${chatInvite.invite_link}
+
+Добро пожаловать в нашу команду! 🚀`;
+
+      await this.bot.telegram.sendMessage(userId, message);
+
+      console.log(`✅ Отправлены инвайты пользователю ${userId}`);
+
+    } catch (error: any) {
+      console.error(`❌ Ошибка отправки инвайтов пользователю ${userId}:`, error?.message || error);
+      
+      // Если не удалось отправить инвайты, логируем это
+      // но не падаем - платеж уже обработан в БД
+      if (error?.response?.error_code === 403) {
+        console.log(`⚠️ Пользователь ${userId} заблокировал бота`);
+      }
+    }
+  }
+
+  public start(port: number = 3000): void {
+    this.app.listen(port, '0.0.0.0', () => {
+      console.log(`🚀 Tribute Webhook server запущен на порту ${port}`);
+      console.log(`📡 Webhook URL: http://your-railway-domain.railway.app/webhook/tribute`);
+      console.log(`🔑 API Key: ${this.apiKey.substring(0, 8)}...`);
+    });
+  }
+
+  public getApp(): express.Application {
+    return this.app;
+  }
+}

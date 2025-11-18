@@ -14,6 +14,7 @@ import { trackUserAction, updateUserStep, setUserCurrency, markUserAsPaid } from
 import { StatsService } from './statsService';
 import { ReminderService } from './reminderService';
 import { ChannelSyncService } from './services/channelSyncService';
+import { TributeWebhookService } from './tributeWebhook';
 
 dotenv.config();
 
@@ -41,6 +42,7 @@ const config = {
   cardNumber: process.env.CARD_NUMBER!,
   paymentAmountUAH: parseInt(process.env.PAYMENT_AMOUNT_UAH || '1050'),
   cardNumberUAH: process.env.CARD_NUMBER_UAH || '5169155124283993',
+  tributeApiKey: process.env.TRIBUTE_API_KEY || '32fc5725-78c2-40aa-990d-dfebf6ec',
   videos: [
     process.env.VIDEO_URL_1!,
     process.env.VIDEO_URL_2!,
@@ -1317,15 +1319,15 @@ async function startBot() {
     
     console.log(`✅ Автоматическая синхронизация канала настроена (каждые ${SYNC_INTERVAL_HOURS}ч)`);
 
-    // 6. Запускаем бота
-    await bot.launch({
-      webhook: process.env.NODE_ENV === 'production' ? {
-        domain: process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost',
-        port: Number(PORT)
-      } : undefined
-    });
+    // 6. Запускаем Tribute Webhook сервер
+    const tributeWebhook = new TributeWebhookService(bot, config.tributeApiKey);
+    tributeWebhook.start(Number(PORT));
+    console.log(`✅ Tribute Webhook сервер запущен на порту ${PORT}`);
 
-    console.log('✅ Бот запущен успешно');
+    // 7. Запускаем бота (Long Polling, не webhook Telegram)
+    await bot.launch();
+
+    console.log('✅ Бот запущен успешно (Long Polling)');
     console.log(`Environment: ${process.env.NODE_ENV}`);
     console.log(`Port: ${PORT}`);
   } catch (error) {
