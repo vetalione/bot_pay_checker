@@ -69,7 +69,8 @@ async function getFunnelReport(userService: UserService) {
       (SELECT COUNT(DISTINCT "userId") FROM user_actions WHERE action = 'click_want_more') as clicked_want_more,
       (SELECT COUNT(DISTINCT "userId") FROM user_actions WHERE action = 'click_continue_watching') as watched_video2,
       (SELECT COUNT(DISTINCT "userId") FROM user_actions WHERE action = 'click_ready_for_more') as watched_video3,
-      (SELECT COUNT(DISTINCT "userId") FROM user_actions WHERE action = 'click_get_advantage') as clicked_advantage,
+      (SELECT COUNT(DISTINCT "userId") FROM user_actions WHERE action IN ('click_get_advantage', 'skip_video3')) as clicked_advantage_or_skipped,
+      (SELECT COUNT(DISTINCT "userId") FROM user_actions WHERE action = 'skip_video3') as skipped_video3,
       (SELECT COUNT(DISTINCT "userId") FROM user_actions WHERE action IN ('choose_rub', 'choose_uah')) as chose_currency,
       (SELECT COUNT(DISTINCT "userId") FROM user_actions WHERE action = 'payment_success') as paid
   `;
@@ -95,8 +96,18 @@ async function getFunnelReport(userService: UserService) {
   showStep('2️⃣ Нажали "Хочу больше" (video1)', parseInt(funnel.clicked_want_more), started);
   showStep('3️⃣ Нажали "Смотреть дальше" (video2)', parseInt(funnel.watched_video2), parseInt(funnel.clicked_want_more));
   showStep('4️⃣ Нажали "Готов!" (video3)', parseInt(funnel.watched_video3), parseInt(funnel.watched_video2));
-  showStep('5️⃣ Нажали "Забрать преимущество"', parseInt(funnel.clicked_advantage), parseInt(funnel.watched_video3));
-  showStep('6️⃣ Выбрали валюту', parseInt(funnel.chose_currency), parseInt(funnel.clicked_advantage));
+  showStep('5️⃣ Перешли к оплате (Забрать преимущество / Пропустить)', parseInt(funnel.clicked_advantage_or_skipped), parseInt(funnel.watched_video3));
+  
+  // Детализация пропуска видео3
+  const skippedCount = parseInt(funnel.skipped_video3);
+  const advantageCount = parseInt(funnel.clicked_advantage_or_skipped) - skippedCount;
+  if (skippedCount > 0) {
+    log(`\n   📊 Детализация:`);
+    log(`   ├─ Посмотрели видео3: ${colors.green}${advantageCount}${colors.reset}`);
+    log(`   └─ Пропустили видео3: ${colors.blue}${skippedCount}${colors.reset} (${Math.round(skippedCount / parseInt(funnel.clicked_advantage_or_skipped) * 100)}%)`);
+  }
+  
+  showStep('6️⃣ Выбрали валюту', parseInt(funnel.chose_currency), parseInt(funnel.clicked_advantage_or_skipped));
   showStep('7️⃣ Оплатили', parseInt(funnel.paid), parseInt(funnel.chose_currency));
   
   log(`\n${'─'.repeat(40)}`);

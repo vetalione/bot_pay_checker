@@ -605,7 +605,8 @@ bot.action('ready_for_more', async (ctx) => {
     {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '🎁 Забрать преимущество!', callback_data: 'get_advantage' }]
+          [{ text: '🎁 Забрать преимущество!', callback_data: 'get_advantage' }],
+          [{ text: '⏭️ Пропустить видео', callback_data: 'skip_video3' }]
         ]
       }
     }
@@ -626,6 +627,34 @@ bot.action('get_advantage', async (ctx) => {
   
   // Track button click
   await trackUserAction(userService, ctx, 'click_get_advantage', 'payment_choice');
+  
+  state.step = 'payment_choice';
+  userStates.set(userId, state);
+
+  // Отмечаем время показа выбора оплаты
+  await userService.markPaymentChoiceShown(userId);
+
+  // Отправляем единое сообщение с отзывами и кнопками оплаты
+  await sendPaymentChoiceWithReviews(ctx);
+});
+
+// Кнопка "Пропустить видео"
+bot.action('skip_video3', async (ctx) => {
+  const userId = ctx.from.id;
+  const state = userStates.get(userId);
+
+  if (!state) {
+    await ctx.answerCbQuery('Пожалуйста, начните с команды /start');
+    return;
+  }
+
+  await ctx.answerCbQuery();
+  
+  // Track skip video3 action
+  await trackUserAction(userService, ctx, 'skip_video3', 'payment_choice');
+  
+  // Mark user as skipped video3
+  await userService.markVideo3Skipped(userId);
   
   state.step = 'payment_choice';
   userStates.set(userId, state);

@@ -118,6 +118,16 @@ export class UserService {
   }
 
   /**
+   * Отметить что пользователь пропустил видео3
+   */
+  async markVideo3Skipped(userId: number): Promise<void> {
+    await this.userRepository.update({ userId }, {
+      skippedVideo3: true,
+      skippedVideo3At: new Date()
+    });
+  }
+
+  /**
    * Записать действие пользователя
    */
   async logAction(

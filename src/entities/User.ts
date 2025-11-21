@@ -34,6 +34,9 @@ export class User {
   lastActivityAt?: Date;
 
   @Column({ type: 'timestamp', nullable: true })
+  currentStepChangedAt?: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
   paymentChoiceShownAt?: Date;
 
   @Column({ type: 'boolean', default: false })
@@ -130,9 +133,12 @@ export class User {
   @Column({ type: 'timestamp', nullable: true })
   reminderLevel3Video3SentAt?: Date;
 
-  // Timestamp когда пользователь перешел на текущий currentStep
+  // Пропуск видео
+  @Column({ type: 'boolean', default: false })
+  skippedVideo3: boolean;
+
   @Column({ type: 'timestamp', nullable: true })
-  currentStepChangedAt?: Date;
+  skippedVideo3At?: Date;
 
   // Пользователь заблокировал бота
   @Column({ type: 'boolean', default: false })
