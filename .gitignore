@@ -22,3 +22,7 @@ videos/
 *.session
 *.session-journal
 channel_sync_session*
+
+# Local analysis scripts (not for production)
+analyze_24h.ts
+check_db_logs.ts
