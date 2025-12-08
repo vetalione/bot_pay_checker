@@ -36,17 +36,9 @@ const DELAYS = {
 // КОНТЕНТ СООБЩЕНИЙ
 // =====================================================================
 
-// FILE_IDs для быстрой отправки (без загрузки файлов каждый раз)
-const FILE_IDS = {
-  banner1: 'AgACAgIAAxkDAAKmqWk2YxAfrhfFePzsjml3O4D3ism9AAInEGsbgRGwSd3rAilx2BrgAQADAgADdwADNgQ',
-  banner2: 'AgACAgIAAxkDAAKmqmk2YywXEwZEYK4Yrl5RbqXDmAyOAAIsEGsbgRGwSTZj0fBse-1BAQADAgADdwADNgQ',
-  banner3: 'AgACAgIAAxkDAAKmt2k2bPjIGA8DEl_-GgtBcV06HlwkAAJgEGsbgRGwSeisdfBfez2oAQADAgADdwADNgQ',
-  banner4: 'AgACAgIAAxkDAAKmuGk2bQ1BMtQPR5Vsn_lrjP06d8aOAAJiEGsbgRGwSQwccsfnyho8AQADAgADdwADNgQ'
-};
-
 const MESSAGES = {
   msg1: {
-    image: FILE_IDS.banner1,
+    image: './снимите это немедленно/banner_1.png',
     text: `Привет, {firstName}! ✨ Это Юля.
 
 Ты интересовался(ась) промтами для рилс - и я хочу рассказать тебе кое-что раньше других.
@@ -71,7 +63,7 @@ const MESSAGES = {
     ]
   },
   msg2: {
-    image: FILE_IDS.banner2,
+    image: './снимите это немедленно/banner_2.png',
     text: `Расскажу подробнее 🙌
 
 <b>«Снимите это немедленно!»</b> - система, которую я собирала 3 года.
@@ -105,7 +97,7 @@ const MESSAGES = {
     ]
   },
   msg3: {
-    image: FILE_IDS.banner3,
+    image: './снимите это немедленно/banner_3.jpg',
     text: `Отвечу на частые вопросы:
 
 <b>«Нет времени»</b> - Уроки в записи, 15-20 мин каждый. Смотри когда удобно.
@@ -137,7 +129,7 @@ const MESSAGES = {
     ]
   },
   msg4: {
-    image: FILE_IDS.banner4,
+    image: './снимите это немедленно/banner_4.png',
     text: `Вот конкретика 👇
 
 <b>Твой результат после курса:</b>
@@ -183,10 +175,9 @@ async function sendMessage(userId: number, msgNum: 1 | 2 | 3 | 4, firstName?: st
     const name = firstName || 'друг';
     const personalizedText = msgData.text.replace('{firstName}', name);
     
-    // Используем file_id для мгновенной отправки (без загрузки файла)
     await bot.telegram.sendPhoto(
       userId,
-      msgData.image,  // file_id строка
+      { source: msgData.image },
       {
         caption: personalizedText,
         parse_mode: 'HTML',
@@ -207,9 +198,8 @@ async function sendMessage(userId: number, msgNum: 1 | 2 | 3 | 4, firstName?: st
   }
 }
 
-
 // =====================================================================
-// ЗАПУСК РАССЫЛКИ СООБЩЕНИЯ 1 (ОПТИМИЗИРОВАННАЯ ВЕРСИЯ)
+// ЗАПУСК РАССЫЛКИ СООБЩЕНИЯ 1
 // =====================================================================
 
 async function startBroadcast() {
@@ -253,38 +243,25 @@ async function startBroadcast() {
     return;
   }
   
-  // ОПТИМИЗАЦИЯ: загружаем все прогрессы в Map для O(1) доступа
-  console.log('[3.5/5] Загружаю существующие прогрессы в память...');
-  const progressMap = new Map<number, CourseChainProgress>();
-  for (const p of existingProgress) {
-    progressMap.set(Number(p.userId), p);
-  }
-  console.log(`   Найдено ${existingProgress.length} существующих записей\n`);
-  
   console.log('[4/5] Начинаю отправку...');
   console.log('────────────────────────────────────────────────────────────');
-  console.log('⏱️  Примерное время: ' + Math.ceil(usersToSend.length * 0.05 / 60) + ' минут');
+  console.log('⏱️  Примерное время: ' + Math.ceil(usersToSend.length * 0.15 / 60) + ' минут');
   console.log('────────────────────────────────────────────────────────────\n');
   
   let sent = 0;
   let failed = 0;
   const startTime = Date.now();
   
-  // Буфер для batch-сохранения
-  const saveBuffer: CourseChainProgress[] = [];
-  const SAVE_BATCH_SIZE = 25;
-  
   for (let i = 0; i < usersToSend.length; i++) {
     const user = usersToSend[i];
     
-    // Быстрый поиск в памяти O(1) вместо запроса к БД
-    let progress = progressMap.get(user.userId);
+    // Создаём или обновляем запись прогресса
+    let progress = await progressRepo.findOne({ where: { userId: user.userId } });
     if (!progress) {
       progress = new CourseChainProgress();
       progress.userId = user.userId;
       progress.username = user.username;
       progress.firstName = user.firstName;
-      progressMap.set(user.userId, progress);
     }
     
     const success = await sendMessage(user.userId, 1, user.firstName);
@@ -293,37 +270,26 @@ async function startBroadcast() {
       sent++;
       progress.msg1Status = 'sent';
       progress.msg1SentAt = new Date();
+      // Логируем каждую успешную отправку
+      process.stdout.write(`\r✅ Отправлено: ${sent} | ❌ Ошибок: ${failed} | Прогресс: ${i + 1}/${usersToSend.length} (${((i + 1) / usersToSend.length * 100).toFixed(1)}%)`);
     } else {
       failed++;
       progress.blocked = true;
+      process.stdout.write(`\r✅ Отправлено: ${sent} | ❌ Ошибок: ${failed} | Прогресс: ${i + 1}/${usersToSend.length} (${((i + 1) / usersToSend.length * 100).toFixed(1)}%)`);
     }
     
-    // Прогресс-бар в одну строку
-    process.stdout.write(`\r✅ Отправлено: ${sent} | ❌ Ошибок: ${failed} | Прогресс: ${i + 1}/${usersToSend.length} (${((i + 1) / usersToSend.length * 100).toFixed(1)}%)`);
+    await progressRepo.save(progress);
     
-    saveBuffer.push(progress);
-    
-    // Batch-сохранение каждые N записей
-    if (saveBuffer.length >= SAVE_BATCH_SIZE) {
-      await progressRepo.save(saveBuffer);
-      saveBuffer.length = 0;
-    }
-    
-    // Детальный прогресс каждые 100
-    if ((sent + failed) % 100 === 0) {
+    // Детальный прогресс каждые 50
+    if ((sent + failed) % 50 === 0) {
       const elapsed = ((Date.now() - startTime) / 1000 / 60).toFixed(1);
       const speed = ((sent + failed) / (Date.now() - startTime) * 1000 * 60).toFixed(0);
       const remaining = Math.ceil((usersToSend.length - sent - failed) / parseFloat(speed));
-      console.log(`\n   📊 ${sent + failed}/${usersToSend.length} | Скорость: ${speed}/мин | Осталось: ~${remaining} мин`);
+      console.log(`\n   � ${sent + failed}/${usersToSend.length} | Скорость: ${speed}/мин | Осталось: ~${remaining} мин`);
     }
     
-    // Пауза 30-50мс (быстрее, но всё ещё безопасно для Telegram)
-    await new Promise(resolve => setTimeout(resolve, 30 + Math.random() * 20));
-  }
-  
-  // Сохраняем оставшиеся записи из буфера
-  if (saveBuffer.length > 0) {
-    await progressRepo.save(saveBuffer);
+    // Пауза 100-150мс (безопасно для Telegram)
+    await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 50));
   }
   
   console.log('\n'); // Новая строка после прогресс-бара
@@ -519,7 +485,7 @@ async function sendPreview() {
     
     await bot.telegram.sendPhoto(
       ADMIN_ID,
-      data.image,  // file_id
+      { source: data.image },
       {
         caption: `📍 <b>СООБЩЕНИЕ ${msgNum}</b>\n\n${text}`,
         parse_mode: 'HTML',

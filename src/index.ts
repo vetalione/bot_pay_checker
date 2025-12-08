@@ -1368,6 +1368,10 @@ async function startBot() {
     // 2.5. Создаем CourseChainService
     courseChainService = new CourseChainService(bot);
     console.log('✅ CourseChainService создан');
+    
+    // 2.6. Запускаем автоотправку цепочки курса (каждые 10 мин, автоотключение через 24ч)
+    courseChainService.startAutoSendScheduler(10, 24);
+    console.log('✅ CourseChain AutoSend запущен (10 мин интервал, 24ч duration)');
 
     // 3. Выводим статистику платежей и воронки
     const statsService = new StatsService();

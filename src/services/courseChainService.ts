@@ -8,10 +8,20 @@ import { Telegraf } from 'telegraf';
 import * as fs from 'fs';
 import * as path from 'path';
 
+// FILE_IDs для быстрой отправки (без загрузки файлов каждый раз)
+const FILE_IDS = {
+  banner1: 'AgACAgIAAxkDAAKmqWk2YxAfrhfFePzsjml3O4D3ism9AAInEGsbgRGwSd3rAilx2BrgAQADAgADdwADNgQ',
+  banner2: 'AgACAgIAAxkDAAKmqmk2YywXEwZEYK4Yrl5RbqXDmAyOAAIsEGsbgRGwSTZj0fBse-1BAQADAgADdwADNgQ',
+  banner3: 'AgACAgIAAxkDAAKmt2k2bPjIGA8DEl_-GgtBcV06HlwkAAJgEGsbgRGwSeisdfBfez2oAQADAgADdwADNgQ',
+  banner4: 'AgACAgIAAxkDAAKmuGk2bQ1BMtQPR5Vsn_lrjP06d8aOAAJiEGsbgRGwSQwccsfnyho8AQADAgADdwADNgQ'
+};
+
+const ADMIN_ID = 278263484;
+
 // Контент сообщений (импортируем из broadcast_course_chain.ts)
 const MESSAGES_CONTENT = {
   msg1: {
-    image: './снимите это немедленно/banner_1.png',
+    image: FILE_IDS.banner1,
     text: `Привет, {firstName}! ✨ Это Юля.
 
 Ты интересовался(ась) промтами для рилс - и я хочу рассказать тебе кое-что раньше других.
@@ -36,7 +46,7 @@ const MESSAGES_CONTENT = {
     ]
   },
   msg2: {
-    image: './снимите это немедленно/banner_2.png',
+    image: FILE_IDS.banner2,
     text: `Расскажу подробнее 🙌
 
 <b>«Снимите это немедленно!»</b> - система, которую я собирала 3 года.
@@ -70,7 +80,7 @@ const MESSAGES_CONTENT = {
     ]
   },
   msg3: {
-    image: './снимите это немедленно/banner_3.jpg',
+    image: FILE_IDS.banner3,
     text: `Отвечу на частые вопросы:
 
 <b>«Нет времени»</b> - Уроки в записи, 15-20 мин каждый. Смотри когда удобно.
@@ -102,7 +112,7 @@ const MESSAGES_CONTENT = {
     ]
   },
   msg4: {
-    image: './снимите это немедленно/banner_4.png',
+    image: FILE_IDS.banner4,
     text: `Вот конкретика 👇
 
 <b>Твой результат после курса:</b>
@@ -177,9 +187,10 @@ export class CourseChainService {
       const name = firstName || 'друг';
       const personalizedText = msgData.text.replace('{firstName}', name);
       
+      // Используем file_id для мгновенной отправки
       await this.bot.telegram.sendPhoto(
         userId,
-        { source: msgData.image },
+        msgData.image,  // file_id строка
         {
           caption: personalizedText,
           parse_mode: 'HTML',
@@ -349,5 +360,115 @@ export class CourseChainService {
       `  📤 Отправлено: ${stats.msg4.sent + stats.msg4.clicked}\n` +
       `  👆 Кликнули: ${stats.msg4.clicked}\n` +
       `  ⏳ Ожидают: ${stats.msg4.pending}`;
+  }
+
+  /**
+   * Выполнить автоотправку по таймерам для всех сообщений 2, 3, 4
+   */
+  async runAutoSend(): Promise<number> {
+    let totalSent = 0;
+
+    for (const msgNum of [2, 3, 4] as const) {
+      const users = await this.getUsersForAutoSend(msgNum);
+      
+      if (users.length > 0) {
+        console.log(`📤 [AutoSend] Сообщение ${msgNum}: ${users.length} пользователей`);
+        
+        for (const user of users) {
+          const success = await this.sendMessage(Number(user.userId), msgNum, user.firstName);
+          if (success) {
+            totalSent++;
+          }
+          // Небольшая пауза между отправками
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+      }
+    }
+
+    return totalSent;
+  }
+
+  /**
+   * Запустить автоотправку с интервалом (автоотключение через 24 часа)
+   * @param intervalMinutes - интервал проверки в минутах (по умолчанию 10)
+   * @param durationHours - через сколько часов отключить (по умолчанию 24)
+   */
+  startAutoSendScheduler(intervalMinutes: number = 10, durationHours: number = 24): void {
+    const startTime = Date.now();
+    const endTime = startTime + (durationHours * 60 * 60 * 1000);
+    
+    console.log(`\n🚀 [CourseChain] Автоотправка запущена!`);
+    console.log(`   📅 Интервал: каждые ${intervalMinutes} минут`);
+    console.log(`   ⏰ Автоотключение через: ${durationHours} часов`);
+    console.log(`   🔚 Завершится: ${new Date(endTime).toLocaleString('ru-RU')}\n`);
+
+    // Уведомляем админа о запуске
+    this.bot.telegram.sendMessage(
+      ADMIN_ID,
+      `🚀 <b>Автоотправка цепочки запущена!</b>\n\n` +
+      `📅 Интервал: каждые ${intervalMinutes} мин\n` +
+      `⏰ Отключится через: ${durationHours}ч\n` +
+      `🔚 Завершится: ${new Date(endTime).toLocaleString('ru-RU')}`,
+      { parse_mode: 'HTML' }
+    ).catch(console.error);
+
+    const intervalId = setInterval(async () => {
+      const now = Date.now();
+      
+      // Проверяем не пора ли выключаться
+      if (now >= endTime) {
+        clearInterval(intervalId);
+        console.log(`\n✅ [CourseChain] Автоотправка завершена (прошло ${durationHours}ч)`);
+        
+        // Уведомляем админа и отправляем финальную статистику
+        try {
+          const stats = await this.formatStatsMessage();
+          await this.bot.telegram.sendMessage(
+            ADMIN_ID,
+            `✅ <b>Автоотправка цепочки завершена!</b>\n\n` +
+            `Прошло ${durationHours} часов с момента запуска.\n\n` +
+            stats,
+            { parse_mode: 'HTML' }
+          );
+        } catch (e) {
+          console.error('Ошибка отправки финального уведомления:', e);
+        }
+        return;
+      }
+
+      // Выполняем автоотправку
+      try {
+        const sent = await this.runAutoSend();
+        if (sent > 0) {
+          const hoursRemaining = Math.round((endTime - now) / (60 * 60 * 1000));
+          console.log(`✅ [AutoSend] Отправлено ${sent} сообщений (осталось ${hoursRemaining}ч)`);
+          
+          // Уведомляем админа только если что-то отправили
+          await this.bot.telegram.sendMessage(
+            ADMIN_ID,
+            `⏰ <b>Автоотправка по таймерам</b>\n\n` +
+            `📤 Отправлено: ${sent} сообщений\n` +
+            `⏳ Осталось: ${hoursRemaining}ч`,
+            { parse_mode: 'HTML' }
+          );
+        }
+      } catch (error) {
+        console.error('[AutoSend] Ошибка:', error);
+      }
+    }, intervalMinutes * 60 * 1000);
+
+    // Первая проверка сразу
+    setTimeout(async () => {
+      try {
+        const sent = await this.runAutoSend();
+        if (sent > 0) {
+          console.log(`✅ [AutoSend] Первичная проверка: отправлено ${sent} сообщений`);
+        } else {
+          console.log(`ℹ️ [AutoSend] Первичная проверка: пока никому не нужно отправлять`);
+        }
+      } catch (error) {
+        console.error('[AutoSend] Ошибка первичной проверки:', error);
+      }
+    }, 5000); // Через 5 секунд после запуска
   }
 }
