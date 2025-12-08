@@ -15,6 +15,7 @@ import { StatsService } from './statsService';
 import { ReminderService } from './reminderService';
 import { ChannelSyncService } from './services/channelSyncService';
 import { TributeWebhookService } from './tributeWebhook';
+import { CourseChainService } from './services/courseChainService';
 
 dotenv.config();
 
@@ -31,6 +32,9 @@ const userStates = new Map<number, UserState>();
 
 // Инициализация UserService (будет создан после подключения БД)
 let userService: UserService;
+
+// Сервис цепочки курса (будет создан после инициализации бота)
+let courseChainService: CourseChainService;
 
 // Конфигурация
 const config = {
@@ -925,6 +929,76 @@ bot.action('pay_uah', async (ctx) => {
   );
 });
 
+// =====================================================================
+// ОБРАБОТЧИКИ КНОПОК ЦЕПОЧКИ КУРСА "СНИМИТЕ ЭТО НЕМЕДЛЕННО!"
+// =====================================================================
+
+// Кнопка "Посмотреть программу" → переход к сообщению 2
+bot.action('course_msg2_trigger', async (ctx) => {
+  await ctx.answerCbQuery('Загружаю программу курса...');
+  const userId = ctx.from.id;
+  const firstName = ctx.from.first_name;
+  logWithTimestamp('📚 Course: user clicked "Посмотреть программу"', { userId });
+  
+  // Отмечаем клик на сообщение 1 и отправляем сообщение 2
+  if (courseChainService) {
+    await courseChainService.handleButtonClick(userId, 1, firstName);
+  }
+});
+
+// Кнопка "Занять место" → сообщение о брони с кнопкой оплаты
+bot.action('course_reserve_spot', async (ctx) => {
+  await ctx.answerCbQuery();
+  
+  const userId = ctx.from.id;
+  logWithTimestamp('🎟 Course: user clicked "Занять место"', { userId });
+  
+  // Отмечаем в БД
+  if (courseChainService) {
+    await courseChainService.markReserved(userId);
+  }
+  
+  await ctx.reply(
+    `Отлично! Официально продажи курса стартуют 12 декабря, но твое место будет за тобой забронировано со скидкой 10%.\n\n` +
+    `Для брони просто отправь по ссылке любую сумму от 10$`,
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '💳 Забронировать место', url: 'https://t.me/tribute/app?startapp=dzWu' }]
+        ]
+      }
+    }
+  );
+});
+
+// Кнопка "Подробнее про формат" → переход к сообщению 3
+bot.action('course_msg3_trigger', async (ctx) => {
+  await ctx.answerCbQuery('Загружаю информацию...');
+  const userId = ctx.from.id;
+  const firstName = ctx.from.first_name;
+  logWithTimestamp('� Course: user clicked "Подробнее про формат"', { userId });
+  
+  // Отмечаем клик на сообщение 2 и отправляем сообщение 3
+  if (courseChainService) {
+    await courseChainService.handleButtonClick(userId, 2, firstName);
+  }
+});
+
+// Кнопка "Посмотреть тарифы" → переход к сообщению 4
+bot.action('course_msg4_trigger', async (ctx) => {
+  await ctx.answerCbQuery('Загружаю тарифы...');
+  const userId = ctx.from.id;
+  const firstName = ctx.from.first_name;
+  logWithTimestamp('💰 Course: user clicked "Посмотреть тарифы"', { userId });
+  
+  // Отмечаем клик на сообщение 3 и отправляем сообщение 4
+  if (courseChainService) {
+    await courseChainService.handleButtonClick(userId, 3, firstName);
+  }
+});
+
+// =====================================================================
+
 // Обработка получения квитанции (фото) и админ file_id
 bot.on(message('photo'), async (ctx) => {
   const userId = ctx.from.id;
@@ -1290,6 +1364,10 @@ async function startBot() {
     // 2. Создаем UserService
     userService = new UserService();
     console.log('✅ UserService создан');
+
+    // 2.5. Создаем CourseChainService
+    courseChainService = new CourseChainService(bot);
+    console.log('✅ CourseChainService создан');
 
     // 3. Выводим статистику платежей и воронки
     const statsService = new StatsService();

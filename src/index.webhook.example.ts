@@ -1,4 +1,4 @@
-// Альтернативная версия index.ts с webhook для Railway
+ // Альтернативная версия index.ts с webhook для Railway
 
 import { Telegraf, Context } from 'telegraf';
 import { message } from 'telegraf/filters';

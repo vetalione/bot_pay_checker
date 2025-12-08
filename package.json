@@ -8,6 +8,8 @@
     "dev": "ts-node src/index.ts",
     "build": "tsc",
     "watch": "tsc -w",
+    "stats": "./railway_stats.sh",
+    "quick-stats": "ts-node quick_stats.ts",
     "get-file-id": "ts-node get_file_id_bot.ts",
     "retargeting": "ts-node src/retargeting.ts",
     "analytics": "ts-node src/analytics.ts",
@@ -20,7 +22,15 @@
     "broadcast-bf-day2-send": "ts-node broadcast_black_friday_day2.ts --send",
     "broadcast-bf-day3": "ts-node broadcast_black_friday_day3.ts",
     "broadcast-bf-day3-send": "ts-node broadcast_black_friday_day3.ts --send",
-    "test-bf": "ts-node test_broadcast_bf.ts"
+    "broadcast-live": "ts-node broadcast_live_stream.ts",
+    "broadcast-live-send": "ts-node broadcast_live_stream.ts --send",
+    "broadcast-live-30min": "ts-node broadcast_live_stream_30min.ts",
+    "broadcast-live-30min-send": "ts-node broadcast_live_stream_30min.ts --send",
+    "test-bf": "ts-node test_broadcast_bf.ts",
+    "course:start": "ts-node broadcast_course_chain_v2.ts start",
+    "course:auto": "ts-node broadcast_course_chain_v2.ts auto",
+    "course:stats": "ts-node broadcast_course_chain_v2.ts stats",
+    "course:preview": "ts-node broadcast_course_chain_v2.ts preview"
   },
   "keywords": [
     "telegram",
