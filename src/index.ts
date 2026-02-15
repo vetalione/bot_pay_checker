@@ -973,14 +973,20 @@ bot.action('course_reserve_spot', async (ctx) => {
 
 // Кнопка "Подробнее про формат" → переход к сообщению 3
 bot.action('course_msg3_trigger', async (ctx) => {
-  await ctx.answerCbQuery('Загружаю информацию...');
   const userId = ctx.from.id;
   const firstName = ctx.from.first_name;
-  logWithTimestamp('� Course: user clicked "Подробнее про формат"', { userId });
+  logWithTimestamp('📋 Course: user clicked "Подробнее про формат"', { userId });
   
   // Отмечаем клик на сообщение 2 и отправляем сообщение 3
   if (courseChainService) {
-    await courseChainService.handleButtonClick(userId, 2, firstName);
+    const sent = await courseChainService.handleButtonClickWithResult(userId, 2, firstName);
+    if (sent) {
+      await ctx.answerCbQuery('Загружаю информацию...');
+    } else {
+      await ctx.answerCbQuery('✅ Информация уже была отправлена, проверь выше ☝️', { show_alert: true });
+    }
+  } else {
+    await ctx.answerCbQuery('Ошибка сервиса', { show_alert: true });
   }
 });
 
@@ -1369,9 +1375,10 @@ async function startBot() {
     courseChainService = new CourseChainService(bot);
     console.log('✅ CourseChainService создан');
     
-    // 2.6. Запускаем автоотправку цепочки курса (каждые 10 мин, автоотключение через 24ч)
-    courseChainService.startAutoSendScheduler(10, 24);
-    console.log('✅ CourseChain AutoSend запущен (10 мин интервал, 24ч duration)');
+    // 2.6. ОТКЛЮЧЕНО - автоотправка запускалась при каждом рестарте бота!
+    // courseChainService.startAutoSendScheduler(10, 24);
+    // console.log('✅ CourseChain AutoSend запущен (10 мин интервал, 24ч duration)');
+    console.log('⚠️ CourseChain AutoSend ОТКЛЮЧЕН (был привязан к запуску бота)');
 
     // 3. Выводим статистику платежей и воронки
     const statsService = new StatsService();
