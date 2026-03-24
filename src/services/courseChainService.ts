@@ -229,6 +229,14 @@ export class CourseChainService {
    * Отметить клик на кнопку и отправить следующее сообщение
    */
   async handleButtonClick(userId: number, messageNum: 1 | 2 | 3 | 4, firstName?: string): Promise<void> {
+    await this.handleButtonClickWithResult(userId, messageNum, firstName);
+  }
+
+  /**
+   * Отметить клик на кнопку и отправить следующее сообщение.
+   * Возвращает true если следующее сообщение было отправлено, false если уже было отправлено ранее.
+   */
+  async handleButtonClickWithResult(userId: number, messageNum: 1 | 2 | 3 | 4, firstName?: string): Promise<boolean> {
     const repo = AppDataSource.getRepository(CourseChainProgress);
     const progress = await this.getOrCreateProgress(userId, undefined, firstName);
     
@@ -247,8 +255,10 @@ export class CourseChainService {
       
       if ((progress as any)[nextStatusField] === 'pending') {
         await this.sendMessage(userId, nextMsgNum, firstName);
+        return true;
       }
     }
+    return false;
   }
   
   /**
