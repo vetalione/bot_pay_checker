@@ -274,7 +274,7 @@ export class ReminderService {
         user.userId,
         text,
         Markup.inlineKeyboard([
-          [Markup.button.callback('▶️ Продолжить', 'want')]
+          [Markup.button.callback('▶️ Продолжить', 'want_more')]
         ])
       );
 
@@ -314,7 +314,7 @@ export class ReminderService {
         user.userId,
         text,
         Markup.inlineKeyboard([
-          [Markup.button.callback('🎬 Смотреть видео', 'want')]
+          [Markup.button.callback('🎬 Смотреть видео', 'want_more')]
         ])
       );
 
@@ -357,7 +357,7 @@ export class ReminderService {
         text,
         Markup.inlineKeyboard([
           [Markup.button.url('💬 Написать ассистенту', 'https://t.me/vetalsmirnov')],
-          [Markup.button.callback('▶️ Посмотреть видео', 'want')]
+          [Markup.button.callback('▶️ Посмотреть видео', 'want_more')]
         ])
       );
 
@@ -482,7 +482,7 @@ export class ReminderService {
         user.userId,
         text,
         Markup.inlineKeyboard([
-          [Markup.button.callback('▶️ Смотреть дальше', 'continue')]
+          [Markup.button.callback('▶️ Смотреть дальше', 'continue_watching')]
         ])
       );
 
@@ -524,7 +524,7 @@ export class ReminderService {
         text,
         Markup.inlineKeyboard([
           [Markup.button.callback('💎 Хочу сразу в канал', 'video1_skip_to_payment')],
-          [Markup.button.callback('🎬 Досмотреть видео', 'continue')]
+          [Markup.button.callback('🎬 Досмотреть видео', 'continue_watching')]
         ])
       );
 
@@ -568,7 +568,7 @@ export class ReminderService {
         text,
         Markup.inlineKeyboard([
           [Markup.button.url('📨 Написать ассистенту', 'https://t.me/vetalsmirnov')],
-          [Markup.button.callback('▶️ Закончить просмотр', 'continue')]
+          [Markup.button.callback('▶️ Закончить просмотр', 'continue_watching')]
         ])
       );
 
@@ -691,7 +691,7 @@ export class ReminderService {
         user.userId,
         text,
         Markup.inlineKeyboard([
-          [Markup.button.callback('▶️ Последнее видео', 'ready')]
+          [Markup.button.callback('▶️ Последнее видео', 'ready_for_more')]
         ])
       );
 
@@ -778,7 +778,7 @@ export class ReminderService {
           caption: text,
           reply_markup: {
             inline_keyboard: [
-              [{ text: '🎬 Закончить путь', callback_data: 'ready' }],
+              [{ text: '🎬 Закончить путь', callback_data: 'ready_for_more' }],
               [{ text: '❌ Не интересно', callback_data: 'not_interested' }]
             ]
           }
@@ -915,7 +915,9 @@ export class ReminderService {
           caption: text,
           reply_markup: {
             inline_keyboard: [
-              [{ text: '💳 Выбрать способ оплаты', callback_data: 'advantage' }]
+              [{ text: '� Оплатить в рублях (RUB) - Tribute', url: 'https://t.me/tribute/app?startapp=sF8Z' }],
+              [{ text: '💳 Оплатить в евро (EUR) - Tribute', url: 'https://t.me/tribute/app?startapp=sFe6' }],
+              [{ text: '💴 Оплатить в гривнах (UAH)', callback_data: 'pay_uah' }]
             ]
           }
         }
@@ -965,8 +967,10 @@ export class ReminderService {
         user.userId,
         text,
         Markup.inlineKeyboard([
-          [Markup.button.url('📨 Написать ассистенту', 'https://t.me/vetalsmirnov')],
-          [Markup.button.callback('💳 Оплатить доступ', 'advantage')]
+          [Markup.button.url('� Оплатить в рублях (RUB) - Tribute', 'https://t.me/tribute/app?startapp=sF8Z')],
+          [Markup.button.url('💳 Оплатить в евро (EUR) - Tribute', 'https://t.me/tribute/app?startapp=sFe6')],
+          [Markup.button.callback('💴 Оплатить в гривнах (UAH)', 'pay_uah')],
+          [Markup.button.url('📨 Написать ассистенту', 'https://t.me/vetalsmirnov')]
         ])
       );
 
@@ -1011,8 +1015,10 @@ export class ReminderService {
         user.userId,
         text,
         Markup.inlineKeyboard([
-          [Markup.button.url('💬 Обсудить цену', 'https://t.me/vetalsmirnov')],
-          [Markup.button.callback('💳 Оплатить $25', 'advantage')]
+          [Markup.button.url('� Оплатить в рублях (RUB) - Tribute', 'https://t.me/tribute/app?startapp=sF8Z')],
+          [Markup.button.url('💳 Оплатить в евро (EUR) - Tribute', 'https://t.me/tribute/app?startapp=sFe6')],
+          [Markup.button.callback('💴 Оплатить в гривнах (UAH)', 'pay_uah')],
+          [Markup.button.url('💬 Обсудить цену', 'https://t.me/vetalsmirnov')]
         ])
       );
 

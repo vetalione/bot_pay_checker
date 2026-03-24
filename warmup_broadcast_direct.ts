@@ -100,7 +100,7 @@ async function runWarmupBroadcast() {
                 [
                   {
                     text: '💴 Оплатить в гривнах (UAH)',
-                    callback_data: 'uah',
+                    callback_data: 'pay_uah',
                   },
                 ],
               ],

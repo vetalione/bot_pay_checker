@@ -21,7 +21,8 @@ interface TributeWebhookPayload {
     price: number; // Цена в минорных единицах (копейках/центах)
     amount: number; // Фактическая сумма после комиссии
     currency: string; // "rub" | "eur" | "usd"
-    user_id: number; // ID пользователя в Tribute
+    trb_user_id: number; // Новый единый ID пользователя в Tribute (заменяет user_id с 14.04.2026)
+    user_id?: number; // Устаревший ID пользователя в Tribute (удаляется 14.04.2026)
     telegram_user_id: number; // ID пользователя в Telegram
     channel_id: number;
     channel_name: string;
@@ -112,6 +113,8 @@ export class TributeWebhookService {
     console.log('🔔 Получен webhook от Tribute:');
     console.log('  Event:', payload.name);
     console.log('  Telegram User ID:', payload.payload?.telegram_user_id);
+    console.log('  Tribute User ID (trb_user_id):', payload.payload?.trb_user_id);
+    console.log('  Tribute User ID (user_id, deprecated):', payload.payload?.user_id);
     console.log('  Currency:', payload.payload?.currency?.toUpperCase());
     console.log('  Price:', payload.payload?.price);
 
@@ -130,7 +133,11 @@ export class TributeWebhookService {
   }
 
   private async processPayment(payload: TributeWebhookPayload) {
-    const { telegram_user_id, currency, price } = payload.payload;
+    const { telegram_user_id, currency, price, trb_user_id, user_id } = payload.payload;
+
+    // Используем trb_user_id как основной идентификатор Tribute (с fallback на user_id до 14.04.2026)
+    const tributeUserId = trb_user_id ?? user_id;
+    console.log(`🆔 Tribute user: trb_user_id=${trb_user_id}, user_id(deprecated)=${user_id}, telegram_user_id=${telegram_user_id}`);
 
     // Проверяем событие
     if (payload.name !== 'new_subscription') {

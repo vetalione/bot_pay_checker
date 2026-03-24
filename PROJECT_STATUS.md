@@ -53,7 +53,7 @@
 
 #### Токен бота: 
 ```
-7959869021:AAEVFt27qkzglmtyf6ZqDrUGuv4xTUpebJY
+<токен бота в .env>
 ```
 
 #### Username: 

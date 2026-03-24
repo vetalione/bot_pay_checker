@@ -30,7 +30,7 @@
 В Railway Dashboard → Settings → Variables добавьте:
 
 ```bash
-BOT_TOKEN=7959869021:AAEVFt27qkzglmtyf6ZqDrUGuv4xTUpebJY
+BOT_TOKEN=<вставь токен из .env>
 GEMINI_API_KEY=AIzaSyCPeDvradN0R__W2CAHlTVG7YsMDQLPxbM
 CHANNEL_ID=-1003216850856
 CHAT_ID=-1002895096401
