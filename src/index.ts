@@ -42,9 +42,9 @@ const config = {
   channelId: process.env.CHANNEL_ID!,
   channelInviteLink: process.env.CHANNEL_INVITE_LINK!,
   chatId: process.env.CHAT_ID!, // ID чата для общения покупателей
-  paymentAmount: parseInt(process.env.PAYMENT_AMOUNT || '2000'),
+  paymentAmount: parseInt(process.env.PAYMENT_AMOUNT || '4000'),
   cardNumber: process.env.CARD_NUMBER!,
-  paymentAmountUAH: parseInt(process.env.PAYMENT_AMOUNT_UAH || '1050'),
+  paymentAmountUAH: parseInt(process.env.PAYMENT_AMOUNT_UAH || '2100'),
   cardNumberUAH: process.env.CARD_NUMBER_UAH || '5169155124283993',
   tributeApiKey: process.env.TRIBUTE_API_KEY || '32fc5725-78c2-40aa-990d-dfebf6ec',
   videos: [
@@ -366,9 +366,9 @@ async function showPaymentButton(ctx: Context) {
     {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '💵 Оплатить рублями (2000 ₽)', callback_data: 'pay_rub_tribute' }],
-          [{ text: '💳 Иностранные карты (22€)', callback_data: 'pay_eur_tribute' }],
-          [{ text: '💴 Оплатить гривнами (1050 ₴)', callback_data: 'pay_uah' }]
+          [{ text: '💵 Оплатить рублями (4000 ₽)', callback_data: 'pay_rub_tribute' }],
+          [{ text: '💳 Иностранные карты (44€)', callback_data: 'pay_eur_tribute' }],
+          [{ text: '💴 Оплатить гривнами (2100 ₴)', callback_data: 'pay_uah' }]
         ]
       }
     }
@@ -433,9 +433,9 @@ async function sendPaymentChoiceWithReviews(ctx: Context) {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
-          [{ text: '💵 Оплатить рублями (2000 ₽)', callback_data: 'pay_rub_tribute' }],
-          [{ text: '💳 Иностранные карты (22€)', callback_data: 'pay_eur_tribute' }],
-          [{ text: '💴 Оплатить гривнами (1050 ₴)', callback_data: 'pay_uah' }]
+          [{ text: '💵 Оплатить рублями (4000 ₽)', callback_data: 'pay_rub_tribute' }],
+          [{ text: '💳 Иностранные карты (44€)', callback_data: 'pay_eur_tribute' }],
+          [{ text: '💴 Оплатить гривнами (2100 ₴)', callback_data: 'pay_uah' }]
         ]
       }
     });
@@ -448,9 +448,9 @@ async function sendPaymentChoiceWithReviews(ctx: Context) {
       {
         reply_markup: {
           inline_keyboard: [
-            [{ text: '💵 Оплатить рублями (2000 ₽)', callback_data: 'pay_rub_tribute' }],
-            [{ text: '💳 Иностранные карты (22€)', callback_data: 'pay_eur_tribute' }],
-            [{ text: '💴 Оплатить гривнами (1050 ₴)', callback_data: 'pay_uah' }]
+            [{ text: '💵 Оплатить рублями (4000 ₽)', callback_data: 'pay_rub_tribute' }],
+            [{ text: '💳 Иностранные карты (44€)', callback_data: 'pay_eur_tribute' }],
+            [{ text: '💴 Оплатить гривнами (2100 ₴)', callback_data: 'pay_uah' }]
           ]
         }
       }
@@ -782,7 +782,7 @@ bot.action('pay_rub_tribute', async (ctx) => {
     '💵 Отлично! Нажмите на кнопку ниже и у вас откроется окно оплаты, где вы получите доступ в канал с платными материалами и наш чат автоматически.\n\n' +
     'Подойдет карта любого российского банка, даже кредитная. Если что-то не получается нажмите "Написать ассистенту" и вам ответят в течение часа.',
     Markup.inlineKeyboard([
-      [Markup.button.url('💳 Оплатить 2000 ₽', 'https://t.me/tribute/app?startapp=sF8Z')],
+      [Markup.button.url('💳 Оплатить 4000 ₽', 'https://t.me/tribute/app?startapp=sF8Z')],
       [Markup.button.url('📨 Написать ассистенту', 'https://t.me/vetalsmirnov')]
     ])
   );
@@ -809,7 +809,7 @@ bot.action('pay_eur_tribute', async (ctx) => {
     '💳 Отлично! Нажмите на кнопку ниже и у вас откроется окно оплаты, где вы получите доступ в канал с платными материалами и наш чат автоматически.\n\n' +
     'Подойдет любая иностранная карта любой страны. Если что-то не получается нажмите "Написать ассистенту" и вам ответят в течение часа.',
     Markup.inlineKeyboard([
-      [Markup.button.url('💳 Оплатить 22€', 'https://t.me/tribute/app?startapp=sFe6')],
+      [Markup.button.url('💳 Оплатить 44€', 'https://t.me/tribute/app?startapp=sFe6')],
       [Markup.button.url('📨 Написать ассистенту', 'https://t.me/vetalsmirnov')]
     ])
   );

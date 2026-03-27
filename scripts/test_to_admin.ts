@@ -22,9 +22,9 @@ async function testToAdmin() {
       '🧪 ТЕСТ #1: Сообщение для waiting_receipt\n\n' +
       'Vitaliy, у тебя не получилось оплатить? Теперь подойдет карта любого банка, любой страны - даже кредитная. Проверь еще раз!',
       Markup.inlineKeyboard([
-        [Markup.button.callback('💵 Оплатить рублями (2000 ₽)', 'pay_rub_tribute')],
-        [Markup.button.callback('💳 Иностранные карты (22€)', 'pay_eur_tribute')],
-        [Markup.button.callback('💴 Оплатить гривнами (1050 ₴)', 'pay_uah')]
+        [Markup.button.callback('💵 Оплатить рублями (4000 ₽)', 'pay_rub_tribute')],
+        [Markup.button.callback('💳 Иностранные карты (44€)', 'pay_eur_tribute')],
+        [Markup.button.callback('💴 Оплатить гривнами (2100 ₴)', 'pay_uah')]
       ])
     );
 
@@ -39,9 +39,9 @@ async function testToAdmin() {
       'Vitaliy, ты уже совсем близко! 🎯\n\n' +
       'Осталось только выбрать удобный способ оплаты. Подойдет карта любого банка, любой страны - даже кредитная!',
       Markup.inlineKeyboard([
-        [Markup.button.callback('💵 Оплатить рублями (2000 ₽)', 'pay_rub_tribute')],
-        [Markup.button.callback('💳 Иностранные карты (22€)', 'pay_eur_tribute')],
-        [Markup.button.callback('💴 Оплатить гривнами (1050 ₴)', 'pay_uah')]
+        [Markup.button.callback('💵 Оплатить рублями (4000 ₽)', 'pay_rub_tribute')],
+        [Markup.button.callback('💳 Иностранные карты (44€)', 'pay_eur_tribute')],
+        [Markup.button.callback('💴 Оплатить гривнами (2100 ₴)', 'pay_uah')]
       ])
     );
 

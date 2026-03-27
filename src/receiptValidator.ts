@@ -42,10 +42,11 @@ export async function validateReceiptWithGemini(
     const base64Image = imageBuffer.toString('base64');
 
     // Формируем промпт для анализа квитанции
+    const currencySymbol = currency === 'UAH' ? '₴' : '₽';
     const prompt = `
 Проверь платежную квитанцию:
 
-Ожидаю: ${expectedAmount}₽ на карту *${expectedCardNumber.slice(-4)}
+Ожидаю: ${expectedAmount}${currencySymbol} на карту *${expectedCardNumber.slice(-4)}
 
 ВАЖНО - ЭТО НОРМАЛЬНО (НЕ мошенничество):
 - Скриншот из банка
